@@ -43,7 +43,7 @@ const CLIMAS = [
     descripcion: 'Una lluvia fina y persistente que cala hasta los huesos. El ambiente se vuelve lúgubre y húmedo.', 
     rad: 0, 
     color: 0x557799,
-    imagen: 'https://i.pinimg.com/1200x/16/96/78/1696783952625b9f73764e43e8198539.jpg'
+    imagen: 'https://i.pinimg.com/originals/5d/29/df/5d29dfd5d5bb006c3ef5ff0fed10c7ce.gif'
   },
   { 
     id: 'lluvia_fuerte', 
@@ -51,7 +51,7 @@ const CLIMAS = [
     descripcion: 'Precipitaciones pesadas que reducen drásticamente la visibilidad y ahogan los sonidos del entorno.', 
     rad: 0, 
     color: 0x335588,
-    imagen: 'https://i.pinimg.com/1200x/ce/4d/b1/ce4db17b568b1a555301087b4120e7f1.jpg'
+    imagen: 'https://i.pinimg.com/originals/8f/04/85/8f04859766812ff05e266aef204f6a7d.gif'
   },
   { 
     id: 'tormenta', 
