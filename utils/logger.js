@@ -1,15 +1,15 @@
 const { PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 
 /**
- * Sistema de registro de eventos (Logging) avanzado para la arquitectura NIMBUS-OS
- * Especificaciones técnicas:
+ * Sistema de registro de eventos (Logging) para la arquitectura NIMBUS-OS
+ * * Especificaciones técnicas:
  * - Emisión dual: Consola local y canal designado en Discord.
- * - Limitación de tasa (Rate limiting) automática.
+ * - Limitación de tasa (Rate limiting) integrada.
  * - Validación estricta de permisos de transmisión.
  * - Jerarquía de niveles de registro configurables.
- * - Cola de procesamiento de mensajes aislada por instancia (Scoped).
+ * - Cola de procesamiento de mensajes aislada por instancia.
  * - Prevención de desbordamiento de la API de Discord (Límite de 2000 caracteres).
- * - Extracción y parseo automático de trazas en objetos Error.
+ * - Extracción y formateo automático de trazas de pila (Stack Traces) en objetos Error.
  */
 
 // ============================================================================
@@ -142,7 +142,7 @@ module.exports = function createLogger(client) {
     const icon = icons[level] || 'ℹ️';
     const levelName = Object.keys(LOG_LEVELS).find(k => LOG_LEVELS[k] === level);
     
-    // Optimización: Gestión estructurada de tipos de datos complejos y captura de trazas
+    // Optimización: Gestión estructurada de tipos de datos complejos
     let textMessage = "";
     if (msgOrError instanceof Error) {
       textMessage = msgOrError.stack || msgOrError.message;
@@ -155,12 +155,12 @@ module.exports = function createLogger(client) {
     // Formateo para la salida estándar de consola
     const consoleOutput = `${icon} [${levelName}] ${textMessage}`;
 
-    // Prevención de desbordamiento: Truncado a 1950 caracteres para evitar excepciones en la API de Discord
+    // Prevención de desbordamiento: Truncado a 1950 caracteres para evitar excepciones en la API
     const truncatedText = textMessage.length > 1950 
       ? textMessage.substring(0, 1950) + '... [TRUNCADO]' 
       : textMessage;
 
-    // Mejora de visualización: Implementación de Embeds dedicados para niveles de criticidad ERROR y WARN
+    // Mejora de visualización: Implementación de Embeds dedicados para niveles ERROR y WARN
     let discordPayload;
     if (level === LOG_LEVELS.ERROR || level === LOG_LEVELS.WARN) {
       const color = level === LOG_LEVELS.ERROR ? 0xff0000 : 0xffaa00;
