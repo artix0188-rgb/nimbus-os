@@ -3,7 +3,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('ping')
-    .setDescription('Muestra las estadísticas detalladas del bot'),
+    .setDescription('Muestra el estado de la red y diagnóstico del sistema Nimbus-OS.'),
 
   async execute(interaction) {
     // Cálculo del tiempo de actividad del sistema (Uptime)
@@ -15,26 +15,34 @@ module.exports = {
     let minutes = Math.floor(totalSeconds / 60);
     let seconds = Math.floor(totalSeconds % 60);
 
-    const uptimeString = `${days} days, ${hours} hrs, ${minutes} mins, ${seconds} secs`;
+    const uptimeString = `${days}d ${hours}h ${minutes}m ${seconds}s`;
 
     // Extracción de métricas de rendimiento (Consumo de memoria y latencia)
     const ramUsage = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2);
     const latency = Date.now() - interaction.createdTimestamp;
 
-    // Generación de interfaz visual con métricas de rendimiento
+    // Generación de interfaz visual temática (Estilo PDA Nimbus-OS)
     const statsEmbed = new EmbedBuilder()
-      .setColor('#57F287') // Asignación de código de color predeterminado
-      .setTitle('Pong!')
+      .setColor(0x0099ff) // Azul táctico del sistema
+      .setAuthor({ 
+        name: 'SISTEMA OPERATIVO NIMBUS-OS', 
+        iconURL: interaction.client.user.displayAvatarURL() 
+      })
+      .setTitle('📟 DIAGNÓSTICO DE RED Y SISTEMA')
       .setDescription(
-        `data only applies to (this) child process\n` +
-        `• time \`${latency} ms\`\n` +
-        `• version \`${process.version}\`\n` +
-        `• uptime \`${uptimeString}\`\n` +
-        `• ram \`${ramUsage} mb\`\n` +
-        `• this cluster has \`${interaction.client.guilds.cache.size}\` servers\n` +
-        `• cluster \`422\` running \`${interaction.client.ws.shards.size}\` of \`3584\` shards\n` +
-        `• shard \`${interaction.guild?.shardId || 0}\``
-      );
+        '```ansi\n' +
+        '\u001b[32m[ESTADO: ONLINE] — Conexión con el servidor central estable.\u001b[0m\n' +
+        '```'
+      )
+      .addFields(
+        { name: '📡 LATENCIA DE ENLACE', value: `> \`${latency} ms\``, inline: true },
+        { name: '💾 CARGA DE MEMORIA', value: `> \`${ramUsage} MB\``, inline: true },
+        { name: '⏱️ TIEMPO EN LÍNEA', value: `> \`${uptimeString}\``, inline: true },
+        { name: '🌍 SECTORES ACTIVOS', value: `> \`${interaction.client.guilds.cache.size}\` redes`, inline: true },
+        { name: '⚙️ VERSIÓN DEL NÚCLEO', value: `> Node \`${process.version}\``, inline: true }
+      )
+      .setFooter({ text: 'NIMBUS-OS KERNEL v4.0.2 | TACTICAL NETWORK' })
+      .setTimestamp();
 
     await interaction.reply({ embeds: [statsEmbed] });
   }
