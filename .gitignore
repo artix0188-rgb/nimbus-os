@@ -1,0 +1,158 @@
+"# ====================================
+# ARCHIVOS DE ENTORNO Y SECRETOS
+# ====================================
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.pfx
+
+# ====================================
+# BASES DE DATOS Y ARCHIVOS JSON
+# ====================================
+# Archivos de base de datos
+data/
+profiles.json
+db.json
+*.db
+*.sqlite
+*.sqlite3
+
+# Backups de base de datos
+*.backup
+*.bak
+data/backups/
+
+# ====================================
+# NODE.JS
+# ====================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# ====================================
+# LOGS
+# ====================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# ====================================
+# ARCHIVOS DEL SISTEMA OPERATIVO
+# ====================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# ====================================
+# IDEs Y EDITORES
+# ====================================
+# Visual Studio Code
+.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# JetBrains IDEs (WebStorm, IntelliJ, etc.)
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ====================================
+# ARCHIVOS TEMPORALES
+# ====================================
+tmp/
+temp/
+*.tmp
+*.temp
+*.cache
+
+# ====================================
+# ARCHIVOS DE TESTING
+# ====================================
+coverage/
+.nyc_output/
+test-results/
+*.lcov
+
+# ====================================
+# BUILD Y DIST
+# ====================================
+dist/
+build/
+out/
+
+# ====================================
+# CONFIGURACIONES ESPECÍFICAS DEL PROYECTO
+# ====================================
+# Archivos de configuración personal
+config.local.json
+settings.local.json
+
+# Archivos de desarrollo
+dev-notes.md
+TODO.md
+
+# ====================================
+# DISCORD BOT ESPECÍFICOS
+# ====================================
+# Tokens y credenciales
+token.txt
+credentials.json
+
+# Archivos de usuario/producción
+user_data/
+production_data/
+
+# ====================================
+# OTROS
+# ====================================
+# Archivos comprimidos
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Certificados
+*.crt
+*.pem
+*.key
+
+# MacOS Thumbnails
+._*
+"
