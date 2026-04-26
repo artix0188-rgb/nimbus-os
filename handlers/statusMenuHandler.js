@@ -12,7 +12,7 @@ const { itemsMaster } = require('../services/inventoryService');
 const perfilCmd = require('../commands/perfil');
 
 // ===========================================================================
-// HELPERS
+// Funciones auxiliares
 // ===========================================================================
 
 function getOwnerIdFromEmbed(message) {
@@ -56,10 +56,10 @@ function calculateArmor(profile) {
     const itemId = profile.equipment[slot]?.itemId;
     if (itemId && itemsMaster[itemId]?.armor) ap += itemsMaster[itemId].armor;
   });
-  return Math.min(50, ap); // Máximo 50 de Blindaje
+  return Math.min(50, ap); // Límite máximo de blindaje fijado en 50 unidades
 }
 
-// Renombrado para coherencia
+// Estandarización de nomenclaturas de estado
 function getEstadoHp(porcentaje) {
   if (porcentaje >= 70) {
     return { estado: 'SANO', color: 0x00ff00, descripcion: 'Signos vitales estables. No se detectan anomalías críticas.' };
@@ -102,7 +102,7 @@ function getCategoriaStats(valor) {
 
 function generarEstadoEmbed(profile, userId) {
   const status = profile.status || {};
-  // Aseguramos leer solo HP
+  // Extracción segura del valor de integridad física (HP)
   const hp = Math.floor(Math.max(0, Math.min(100, status.hp ?? 100)));
   const radiacion = status.radiacion ?? 0;
   const hambre = status.hambre ?? 50;
@@ -168,7 +168,7 @@ function generarEstadoEmbed(profile, userId) {
 }
 
 // ===========================================================================
-// HANDLER PRINCIPAL (Botones y Modal)
+// Controlador principal de interfaz gráfica (Botones y Formularios)
 // ===========================================================================
 
 module.exports = async function handleStatusButtons(interaction) {

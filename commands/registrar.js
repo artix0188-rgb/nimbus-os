@@ -1,15 +1,15 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { getProfile, createProfile } = require('../services/profileService');
 
-// ---------------------------------------------------------------------------
-// COOLDOWN SYSTEM (Previene spam del comando)
-// ---------------------------------------------------------------------------
+// ===========================================================================
+// Sistema de limitación de tasa (Prevención de sobrecarga de servidor)
+// ===========================================================================
 const cooldowns = new Map();
-const COOLDOWN_TIME = 10000; // 10 segundos
+const COOLDOWN_TIME = 10000; // Intervalo de 10 segundos
 
-// ---------------------------------------------------------------------------
-// HELPERS
-// ---------------------------------------------------------------------------
+// ===========================================================================
+// Funciones auxiliares
+// ===========================================================================
 
 function generarSystemID() {
   const longitud = Math.floor(Math.random() * 2) + 10;
@@ -28,7 +28,7 @@ function obtenerFotoDePool() {
     : 'https://i.imgur.com/HifVRqT.jpg';
 }
 
-// 🔥 MEJORA: Log de registro pasado a Embed Azul
+// Mejora: Registro de auditoría estandarizado en formato Embed.
 async function registrarLogEvento(interaction, titulo, detalles) {
   const client = interaction.client;
   const logChannelId = process.env.LOG_CHANNEL_ID;
@@ -48,7 +48,7 @@ async function registrarLogEvento(interaction, titulo, detalles) {
 
     await channel.send({ embeds: [embed] });
   } catch (e) {
-    console.error('❌ [N-OS]: Error Log:', e.message);
+    console.error('❌ [N-OS]: Error de transmisión de registro de auditoría:', e.message);
   }
 }
 
@@ -87,9 +87,9 @@ function validarNombre(nombre) {
   return { valido: true };
 }
 
-// ---------------------------------------------------------------------------
-// COMANDO
-// ---------------------------------------------------------------------------
+// ===========================================================================
+// Definición y ejecución del comando
+// ===========================================================================
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -105,7 +105,7 @@ module.exports = {
       if (Date.now() < expirationTime) {
         const tiempoRestante = Math.ceil((expirationTime - Date.now()) / 1000);
         return interaction.reply({
-          content: `⏳ **[N-OS]**: COOLDOWN_ACTIVO. Espera ${tiempoRestante}s antes de reintentar.`,
+          content: `⏳ **[N-OS]**: LIMITACIÓN_TASA_ACTIVA. Reintente en ${tiempoRestante}s.`,
           flags: 64
         });
       }
@@ -115,8 +115,8 @@ module.exports = {
       return interaction.reply({
         content:
           `⚠️ **[N-OS]**: ERROR: \`ID_DUPLICADA\`\n` +
-          `> El sistema ya detecta un registro activo para este operador.\n` +
-          `> Use \`/perfil\` para acceder a sus entradas en la terminal.`,
+          `> El sistema detecta un registro activo previo para este operador.\n` +
+          `> Ejecute \`/perfil\` para acceder a la terminal de datos.`,
         flags: 64
       });
     }
@@ -124,7 +124,7 @@ module.exports = {
     cooldowns.set(user.id, Date.now());
 
     await interaction.reply({ 
-      content: `*️⃣ **[N-OS]**: Iniciando conexión...`, 
+      content: `*️⃣ **[N-OS]**: Estableciendo comunicación bidireccional...`, 
       flags: 64
     });
 
@@ -137,12 +137,12 @@ module.exports = {
         1500));
 
       tempMessages.push(await enviarConDelay(ch,
-        `> **[N-OS]**: Estableciendo enlace con la red...\n> **[N-OS]**: Verificando identidad del operador...`,
+        `> **[N-OS]**: Enlace cifrado establecido.\n> **[N-OS]**: Ejecutando verificación de identidad...`,
         1500));
 
       tempMessages.push(await enviarConDelay(ch,
-        `> **[N-OS]**: Sujeto no registrado detectado. Iniciando **PROTOCOLO DE INDUCCIÓN**.\n` +
-        `> **[N-OS]**: <@${user.id}>, introduzca su **nombre completo** para vincular su identidad a la red.`,
+        `> **[N-OS]**: Operador no identificado. Procediendo con la **INDUCCIÓN DE SISTEMA**.\n` +
+        `> **[N-OS]**: <@${user.id}>, proporcione su **designación oficial** para la generación de la credencial biométrica.`,
         0));
 
       const filter = m => m.author.id === user.id;
@@ -155,7 +155,7 @@ module.exports = {
         const validacion = validarNombre(nombreInput);
         if (!validacion.valido) {
           await borrarMensajes(tempMessages);
-          return ch.send(`❌ **[N-OS]**: \`${validacion.error}\` — Protocolo abortado.`);
+          return ch.send(`❌ **[N-OS]**: \`${validacion.error}\` — Secuencia de registro abortada.`);
         }
 
         const { loadDB } = require('../utils/db');
@@ -167,17 +167,17 @@ module.exports = {
         if (nombreDuplicado) {
           await borrarMensajes(tempMessages);
           return ch.send(
-            `❌ **[N-OS]**: \`NOMBRE_DUPLICADO\` — Ya existe un ciudadano registrado con el nombre **${nombreInput}**. ` +
-            `Elige otro nombre para completar el registro.`
+            `❌ **[N-OS]**: \`CONFLICTO_DESIGNACIÓN\` — El alias **${nombreInput}** ya está asignado. ` +
+            `Seleccione una variante distinta.`
           );
         }
 
         tempMessages.push(await enviarConDelay(ch,
-          `> **[N-OS]**: Validando designación \`${nombreInput}\`...`,
+          `> **[N-OS]**: Procesando alias \`${nombreInput}\`...`,
           1000));
 
         tempMessages.push(await enviarConDelay(ch,
-          `> **[N-OS]**: Sincronizando datos con el KERNEL...`,
+          `> **[N-OS]**: Sincronización de bases de datos en progreso...`,
           1500));
 
         const sID = generarSystemID();
@@ -193,37 +193,37 @@ module.exports = {
           systemID: sID
         });
 
-        // 🔥 Enviar Log en formato Embed usando interaction
+        // Transmisión de auditoría de registro utilizando el contexto de la interacción
         await registrarLogEvento(interaction, 'NIMBUS-OS // ALTA_SISTEMA', [
           `**SUJETO:** <@${user.id}>`,
           `**DESIGNACIÓN:** ${nombreInput}`,
           `**SYNC_ID:** \`${sID}\``,
-          `**ESTADO:** REGISTRADO_EXITOSAMENTE`
+          `**ESTADO:** COMPILACIÓN_EXITOSA`
         ]);
 
         await borrarMensajes(tempMessages);
 
         await ch.send(
-          `\`\`\`ansi\n\u001b[32m[NIMBUS-OS] — REGISTRO COMPLETADO\u001b[0m\n\`\`\`` +
-          `✅ <@${user.id}>, su identidad ha sido vinculada a la red.\n` +
+          `\`\`\`ansi\n\u001b[32m[NIMBUS-OS] — COMPILACIÓN COMPLETADA\u001b[0m\n\`\`\`` +
+          `✅ <@${user.id}>, las credenciales han sido generadas y validadas.\n` +
           `> **DESIGNACIÓN:** ${nombreInput}\n` +
           `> **SYNC_ID:** \`${sID}\`\n\n` +
-          `⚠️ *AVISO DEL SISTEMA: Se han detectado parámetros estándar asignados por defecto. ` +
-          `Use \`/perfil\` para personalizar sus entradas en la terminal.*`
+          `⚠️ *AVISO AUTOMÁTICO: Se aplicaron parámetros básicos. ` +
+          `Utilice \`/perfil\` para acceder a la herramienta de personalización.*`
         );
       });
 
       collector.on('end', async (collected, reason) => {
         if (reason === 'time' && collected.size === 0) {
           await borrarMensajes(tempMessages);
-          ch.send(`❌ **[N-OS]**: \`TIMEOUT\` — El tiempo de respuesta ha expirado. Protocolo cancelado.`);
+          ch.send(`❌ **[N-OS]**: \`TIEMPO_AGOTADO\` — Desconexión por inactividad. Procedimiento cancelado.`);
         }
       });
 
     } catch (error) {
-      console.error('❌ Error en comando registrar:', error);
+      console.error('❌ Error de tiempo de ejecución en comando registrar:', error);
       await borrarMensajes(tempMessages);
-      ch.send('❌ **[N-OS]**: ERROR_CRITICO — El protocolo ha fallado.');
+      ch.send('❌ **[N-OS]**: ERROR_FATAL — Fallo sistémico inesperado.');
     }
   }
 };

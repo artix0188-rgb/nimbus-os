@@ -9,7 +9,7 @@ module.exports = {
   async execute(interaction) {
     const channelId = interaction.channelId;
     
-    // 1. Consultar al radar de cuerpos si hay alguien tirado en este canal
+    // Consulta al sistema de rastreo para identificar entidades inertes en el sector
     const bodies = lootHandler.getBodiesInChannel(channelId);
 
     if (bodies.length === 0) {
@@ -19,13 +19,13 @@ module.exports = {
       });
     }
 
-    // 2. Si solo hay 1 cuerpo, lo abrimos directamente
+    // Resolución de apertura automática en caso de detectar un único objetivo
     if (bodies.length === 1) {
       await interaction.reply({ content: `📟 **[N-OS]**: Registrando cuerpo de **${bodies[0].name}**...`, flags: 64 });
       return lootHandler.iniciarSaqueo(null, bodies[0].id, interaction.channel);
     }
 
-    // 3. Si hay Varios Cuerpos, mostramos un menú para elegir
+    // Generación de interfaz de selección para múltiples objetivos localizados
     const select = new StringSelectMenuBuilder()
       .setCustomId('loot_selbody_public')
       .setPlaceholder('Selecciona el cuerpo a registrar...');

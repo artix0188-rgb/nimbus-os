@@ -4,29 +4,29 @@ const monstersDb = require('../data/monsters');
 const { getProfile } = require('../services/profileService');
 const perfilCmd = require('./perfil');
 
-
 module.exports = {
   adminOnly: true,
   data: new SlashCommandBuilder()
     .setName('iniciarcombate')
     .setDescription('[STAFF] Inicia una instancia de combate táctico PvE.')
     
-    // 1. OBLIGATORIOS (Deben ir arriba)
+    // Parámetros obligatorios (Deben declararse primero en la estructura del comando)
     .addUserOption(opt => opt.setName('jugador1').setDescription('Primer participante').setRequired(true))
     .addStringOption(opt => opt.setName('monstruos').setDescription('IDs separadas por coma (ej: mon_001,mon_002)').setRequired(true))
-    // 🔥 NUEVO: MODO LETAL OBLIGATORIO 🔥
+    
+    // Configuración del modo de letalidad
     .addBooleanOption(opt => opt.setName('modo_letal').setDescription('¿El combate es a muerte definitiva (Instakill)?').setRequired(true))
     
-    // 2. OPCIONALES
+    // Parámetros opcionales (Participantes secundarios)
     .addUserOption(opt => opt.setName('jugador2').setDescription('Segundo participante').setRequired(false))
     .addUserOption(opt => opt.setName('jugador3').setDescription('Tercer participante').setRequired(false))
     .addUserOption(opt => opt.setName('jugador4').setDescription('Cuarto participante').setRequired(false)),
 
   async execute(interaction) {
-    // 🛡️ VERIFICACIÓN STAFF
+    // Verificación de credenciales Staff
     const isStaff = perfilCmd.helpers?.isStaff ? perfilCmd.helpers.isStaff(interaction.user.id, interaction.member) : false;
     if (!isStaff && interaction.channel.parentId !== process.env.RP_CATEGORY_ID && interaction.user.id !== process.env.OWNER_ID) {
-      return interaction.reply({ content: '❌ Comando exclusivo de Staff.', flags: 64 });
+      return interaction.reply({ content: '❌ Comando exclusivo de administradores.', flags: 64 });
     }
 
     const j1 = interaction.options.getUser('jugador1');
@@ -34,28 +34,28 @@ module.exports = {
     const j3 = interaction.options.getUser('jugador3');
     const j4 = interaction.options.getUser('jugador4');
     const monsterStr = interaction.options.getString('monstruos');
-    const isLethal = interaction.options.getBoolean('modo_letal'); // Capturamos la variable
+    const isLethal = interaction.options.getBoolean('modo_letal'); 
 
-    // Filtramos los nulos (entradas vacías)
+    // Filtrado de parámetros vacíos para la configuración de la matriz de combate
     const rawUsers = [j1, j2, j3, j4].filter(u => u !== null);
     const players = [];
 
-    // 1. Validar Perfiles y Cargar Jugadores
+    // 1. Verificación de perfiles e inicialización de entidades de jugadores
     for (const user of rawUsers) {
       const profile = getProfile(user.id);
       
-      // Si no existe el perfil o no tiene nombre (ficha incompleta), cancelamos todo.
+      // Abortar si el usuario no posee registros o los datos están corruptos
       if (!profile || !profile.nombre) {
         return interaction.reply({ 
-          content: `❌ **Abortado:** El usuario **${user.username}** no tiene una ficha de personaje registrada y no puede entrar en combate.`, 
+          content: `❌ **Abortado:** El usuario **${user.username}** carece de registro de personaje y no es elegible para la simulación.`, 
           flags: 64 
         });
       }
 
-      // 🔥 COMPROBAR SI ESTÁ MUERTO 🔥
+      // Abortar si el perfil se encuentra inactivo (Estado vital: Muerto)
       if (profile.isDead) {
         return interaction.reply({
-          content: `❌ **Abortado:** El personaje de **${user.username}** figura como MUERTO en el sistema. No puede participar.`,
+          content: `❌ **Abortado:** El estado vital de **${user.username}** figura como FALLECIDO en el sistema base.`,
           flags: 64
         });
       }
@@ -72,7 +72,7 @@ module.exports = {
       });
     }
 
-    // 2. Cargar Monstruos
+    // 2. Procesamiento e inicialización de entidades hostiles (Monstruos)
     const enemies = [];
     const monsterIds = monsterStr.split(',');
     monsterIds.forEach(mId => {
@@ -90,21 +90,21 @@ module.exports = {
       }
     });
 
-    if (enemies.length === 0) return interaction.reply({ content: '❌ Ninguna ID de monstruo válida.', flags: 64 });
+    if (enemies.length === 0) return interaction.reply({ content: '❌ Los identificadores de hostiles proporcionados no son válidos.', flags: 64 });
 
-    // 3. Generar Iniciativa y Estado
+    // 3. Establecimiento del orden de turnos y metadatos de la instancia
     const turnQueue = engine.calcularIniciativa([...players, ...enemies]);
     const combatId = `comb_${Date.now()}`;
 
-    // 🔥 AVISO DE LETALIDAD 🔥
-    const letalTag = isLethal ? '☠️ **[MODO LETAL ACTIVADO: MUERTE DEFINITIVA INSTANTÁNEA]**\n' : '';
-    await interaction.reply({ content: `${letalTag}Generando entorno de combate táctico...` });
+    // Notificación inicial del entorno y advertencia de reglas
+    const letalTag = isLethal ? '☠️ **[MODO LETAL ACTIVADO: RIESGO DE MUERTE DEFINITIVA]**\n' : '';
+    await interaction.reply({ content: `${letalTag}Generando entorno de simulación táctica...` });
     const initialMessage = await interaction.fetchReply();
 
     engine.activeCombats.set(combatId, {
       id: combatId,
       message: initialMessage,
-      isLethal: isLethal, // Guardado para usarlo en combatHandler
+      isLethal: isLethal, 
       players: players,
       enemies: enemies,
       turnQueue: turnQueue,
@@ -112,26 +112,26 @@ module.exports = {
       log: ['> *Las hostilidades han comenzado.*']
     });
 
-    // 📂 AUDITORÍA
+    // Envío del registro de auditoría de creación del evento
     try {
       await perfilCmd.helpers.sendToLogChannel(interaction, 'SISTEMA_DE_COMBATE', [
         `**ACCIÓN   :** Inicialización de Enfrentamiento`,
         `**OFICIAL  :** <@${interaction.user.id}>`,
-        `**MODO     :** ${isLethal ? '☠️ LETAL (Instakill)' : '⚠️ ESTÁNDAR (-10 Max HP por caída)'}`,
+        `**MODO     :** ${isLethal ? '☠️ LETAL (Instakill)' : '⚠️ ESTÁNDAR (Penalización HP)'}`,
         `**SECTOR   :** <#${interaction.channelId}>`,
-        `**ENTIDADES:** ${players.length} Jugador(es) vs ${enemies.length} Hostil(es)`,
+        `**ENTIDADES:** ${players.length} Operadores vs ${enemies.length} Hostiles`,
         `**ID REF   :** \`${combatId}\``
       ]);
     } catch (e) {
-      console.error('No se pudo enviar el log de combate:', e);
+      console.error('Fallo en la comunicación con el canal de auditoría:', e);
     }
 
-    // 🟢 FIX C: Usamos el arrancador inteligente para que la IA actúe si le toca primero
+    // Arranque asíncrono para gestionar turnos automáticos de la IA
     const combatHandler = require('../handlers/combatHandler');
     if (typeof combatHandler.arrancarCombate === 'function') {
       await combatHandler.arrancarCombate(null, combatId);
     } else {
-      await interaction.followUp({ content: '⚠️ Error: No se pudo renderizar la interfaz. La función arrancarCombate no está disponible.', flags: 64 });
+      await interaction.followUp({ content: '⚠️ Excepción de sistema: Módulo de combate no inicializado correctamente.', flags: 64 });
     }
   }
 };

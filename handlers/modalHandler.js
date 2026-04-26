@@ -10,7 +10,7 @@ module.exports = async (interaction) => {
 
   const isOwner = interaction.user.id === process.env.OWNER_ID;
 
-  // 🔒 Anti-impersonación con override de owner
+  // Control de seguridad: Prevención de suplantación de identidad (con anulación de privilegios para el administrador)
   if (interaction.user.id !== userId && !isOwner) {
 
     interaction.client.logger?.warn(
@@ -38,7 +38,7 @@ module.exports = async (interaction) => {
 
   const db = loadDB();
 
-  // 🔒 YA EXISTE
+  // Validación: Verificación de registro preexistente
   if (db[userId] && db[userId].nombre) {
     return interaction.reply({
       content:
@@ -49,12 +49,12 @@ module.exports = async (interaction) => {
     });
   }
 
-  // 📥 INPUTS
+  // Procesamiento de variables de entrada
   const nombre = interaction.fields.getTextInputValue('nombre').trim();
   const edadInput = interaction.fields.getTextInputValue('edad').trim();
   const nacionalidadInput = interaction.fields.getTextInputValue('nacionalidad').trim();
 
-  // 🔍 VALIDACIONES
+  // Ejecución de rutinas de validación de formato
   if (!/^\d+$/.test(edadInput)) {
     return interaction.reply({
       content: '❌ La edad debe contener solo números.',
@@ -74,7 +74,7 @@ module.exports = async (interaction) => {
 
   const systemID = generarID();
 
-  // 💾 GUARDAR
+  // Persistencia de datos en el sistema central
   db[userId] = {
     systemID,
     nombre,
@@ -85,7 +85,7 @@ module.exports = async (interaction) => {
 
   saveDB(db);
 
-  // 📟 LOG PRO
+  // Emisión de registro de auditoría del sistema
   interaction.client.logger?.info(
 `📟 NIMBUS-OS // SYSTEM LOG
 ────────────────────────────
@@ -102,7 +102,7 @@ module.exports = async (interaction) => {
 🕒 TIME: ${new Date().toISOString()}`
   );
 
-  // ✅ RESPUESTA AL USUARIO
+  // Transmisión de confirmación a la terminal de usuario
   await interaction.reply({
     content:
 `✅ **NIMBUS-OS // REGISTRATION COMPLETE**
@@ -111,7 +111,7 @@ module.exports = async (interaction) => {
     flags: 64
   });
 
-  // 🌍 EMBED PÚBLICO
+  // Despliegue de notificación de red pública
   const embed = {
     color: 0x00ffcc,
     title: `👤 ${nombre.toUpperCase()}`,

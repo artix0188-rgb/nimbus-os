@@ -14,7 +14,7 @@ module.exports = {
     .setDescription('Escanea el sector actual en busca de suministros caídos'),
 
   async execute(interaction) {
-    // 🛡️ RESTRICCIÓN DE CATEGORÍA (RP)
+    // Verificación de zona: Restricción de ejecución a canales de simulación de rol (RP)
     if (interaction.channel.parentId !== process.env.RP_CATEGORY_ID) {
       return interaction.reply({
         content: '❌ **[N-OS]**: El sensor de búsqueda solo opera en zonas de despliegue (RP).',

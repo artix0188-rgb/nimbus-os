@@ -7,7 +7,7 @@ const {
   GatewayIntentBits,
   Collection,
   Partials,
-  PermissionFlagsBits // 🔥 AÑADIDO: Necesario para los permisos de Admin
+  PermissionFlagsBits // Dependencia requerida para la gestión de permisos administrativos
 } = require('discord.js');
 
 const services = require('./services');
@@ -24,7 +24,7 @@ const estadosPDA = require('./utils/pdaStatuses');
 
 
 // ==========================================
-// ⚙️ CONFIGURACIÓN DEL CLIENTE (INTENTS)
+// CONFIGURACIÓN DEL CLIENTE (INTENTS)
 // ==========================================
 const client = new Client({
   intents: [
@@ -36,13 +36,13 @@ const client = new Client({
   partials: [Partials.Channel]
 });
 
-// Configuración inicial de utilidades globales
+// Inicialización de utilidades y estructuras de datos globales
 client.logger = createLogger(client);
 client.commands = new Collection();
 client.services = services;
 
 // ==========================================
-// 📦 CARGA DINÁMICA DE COMANDOS (SLASH)
+// CARGA DINÁMICA DE COMANDOS (SLASH)
 // ==========================================
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'));
@@ -52,7 +52,7 @@ for (const file of commandFiles) {
     const command = require(`./commands/${file}`);
     if (command.data && command.execute) {
       
-      // 🔥 EL INYECTOR AUTOMÁTICO DE SEGURIDAD 🔥
+      // Inyección automática de directivas de seguridad para comandos restringidos
       if (command.adminOnly) {
         command.data.setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
       }
@@ -66,7 +66,7 @@ for (const file of commandFiles) {
 }
 
 // ==========================================
-// 🛡️ MANEJO DE ERRORES GLOBALES
+// GESTIÓN GLOBAL DE EXCEPCIONES
 // ==========================================
 process.on('unhandledRejection', error => {
   console.error('❌ Unhandled promise rejection:', error);
@@ -77,7 +77,7 @@ process.on('uncaughtException', error => {
 });
 
 // ==========================================
-// 🚀 EVENTO: READY (SISTEMA ONLINE)
+// EVENTO DE INICIALIZACIÓN: READY (SISTEMA ONLINE)
 // ==========================================
 client.once('clientReady', async () => {
   console.log(`🤖 NIMBUS-OS // LOGIN EXITOSO: ${client.user.tag}`);
@@ -88,7 +88,7 @@ client.once('clientReady', async () => {
   }
   client.logger.info('NIMBUS-OS // SYSTEM ONLINE: El sistema está listo para operar.');
 
-  // ── Auto-deploy de slash commands ──────────────────────────────────────
+  // ── Despliegue automático de comandos de aplicación (Slash Commands) ──
   try {
     const { REST, Routes } = require('discord.js');
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
@@ -106,7 +106,7 @@ client.once('clientReady', async () => {
     console.error('❌ Error al registrar slash commands:', err);
   }
 
-// 📡 SISTEMA DE PRESENCIA ROTATIVA (MODO "SHUFFLE BAG")
+  // SISTEMA DE PRESENCIA ROTATIVA (ALGORITMO SHUFFLE BAG)
   let poolEstados = [...estadosPDA];
   let indice = 0;
 
@@ -145,16 +145,16 @@ client.once('clientReady', async () => {
 });
 
 // ==========================================
-// ⚡ MANEJO DE INTERACCIONES (EVENTO GLOBAL)
+// CONTROLADOR GLOBAL DE INTERACCIONES
 // ==========================================
 client.on('interactionCreate', async interaction => {
 
-  // 🟣 MANEJO DE SLASH COMMANDS
+  // PROCESAMIENTO DE COMANDOS DE APLICACIÓN
   if (interaction.isChatInputCommand()) {
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
 
-    // 🔥 EL CANDADO GLOBAL DE ADMIN 🔥
+    // Control de acceso global de nivel administrativo
     if (command.adminOnly && !interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
       return interaction.reply({ 
         content: '❌ **[N-OS // SEGURIDAD]**: Acceso denegado. Protocolo exclusivo para operadores de Nivel Administrador.', 
@@ -179,7 +179,7 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  // 🟡 MANEJO DE INTERFACES (BOTONES Y MENÚS)
+  // PROCESAMIENTO DE COMPONENTES DE INTERFAZ (BOTONES Y MENÚS)
   if (interaction.isButton() || interaction.isStringSelectMenu()) {
     if (interaction.customId.startsWith('perfil_')) {
       try {
@@ -240,7 +240,7 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  // 🔵 MANEJO DE MODALES
+  // PROCESAMIENTO DE FORMULARIOS (MODALES)
   if (interaction.isModalSubmit()) {
     try {
       if (interaction.customId.startsWith('estado_')) {
@@ -262,7 +262,7 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  // SISTEMA GLOBAL DE AUTO-LIMPIEZA DE INTERFACES
+  // SISTEMA GLOBAL DE RECOLECCIÓN DE BASURA PARA INTERFACES DE USUARIO
   try {
     if (interaction.replied || interaction.deferred || interaction.isMessageComponent()) {
       
@@ -278,6 +278,7 @@ client.on('interactionCreate', async interaction => {
       if (msgToTrack && msgToTrack.components && msgToTrack.components.length > 0) {
   
       const firstComponentId = msgToTrack.components[0]?.components[0]?.customId;
+      // Exclusión temporal para menús de combate y selección activa de objetivos
       if (firstComponentId?.startsWith('cb_') || firstComponentId?.startsWith('loot_sel_')) {
         return; 
       }
@@ -290,6 +291,7 @@ client.on('interactionCreate', async interaction => {
           clearTimeout(interaction.client.componentTimeouts.get(msgToTrack.id));
         }
 
+        // Restablecimiento asíncrono para prevenir saturación visual en los canales
         const timer = setTimeout(() => {
           msgToTrack.edit({ components: [] }).catch(() => null); 
           interaction.client.componentTimeouts.delete(msgToTrack.id); 
@@ -303,12 +305,13 @@ client.on('interactionCreate', async interaction => {
       }
     }
   } catch (error) {
+    // Falla de captura silenciosa para operaciones efímeras expiradas
   }
 
 }); 
 
 // ==========================================
-// 💬 EVENTO: MENSAJES (HAMBRE / SED)
+// MONITOR DE EVENTOS DE MENSAJERÍA (SISTEMA DE DESGASTE VITAL)
 // ==========================================
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
@@ -321,7 +324,7 @@ client.on('messageCreate', async message => {
 });
 
 // ==========================================
-// 🔐 INICIO DE SESIÓN
+// AUTENTICACIÓN E INICIO DE SESIÓN
 // ==========================================
 const token = process.env.TOKEN;
 

@@ -24,7 +24,7 @@ module.exports = {
     const target   = interaction.options.getUser('usuario') || executor;
     const isSelf   = target.id === executor.id;
 
-    // Solo staff puede gestionar proxies de otros
+    // Verificación de privilegios administrativos para la gestión de proxies de terceros
     if (!isSelf) {
       const isPrivileged = perfilCmd.helpers.isOwnerOrAuthorized(executor.id) ||
                            perfilCmd.helpers.isAdmin(member);
@@ -58,7 +58,7 @@ module.exports = {
     proxiesActuales.splice(idx, 1);
     updateProfile(target.id, { proxies: proxiesActuales });
 
-    // 🔥 CORRECCIÓN: Usar 'interaction' y formato de log azul con menciones
+    // Emisión de registro de auditoría utilizando el contexto de la interacción
     await perfilCmd.helpers.sendToLogChannel(interaction, 'PROXY_ELIMINADO', [
       `**OPERADOR :** <@${executor.id}> ${!isSelf ? '(⚠️ ACCIÓN DE STAFF)' : ''}`,
       ...(isSelf ? [] : [`**SUJETO   :** <@${target.id}>`]),

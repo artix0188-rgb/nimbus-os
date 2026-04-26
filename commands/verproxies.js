@@ -18,7 +18,7 @@ module.exports = {
     const target   = interaction.options.getUser('usuario') || executor;
     const isSelf   = target.id === executor.id;
 
-    // Solo staff puede ver proxies de otros
+    // Verificación de privilegios administrativos para consultas de terceros
     if (!isSelf) {
       const isPrivileged = perfilCmd.helpers.isOwnerOrAuthorized(executor.id) ||
                            perfilCmd.helpers.isAdmin(member);

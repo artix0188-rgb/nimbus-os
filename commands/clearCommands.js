@@ -9,7 +9,7 @@ module.exports = {
     .setDescription('🧹 Elimina comandos globales'),
 
   async execute(interaction) {
-
+    // Verificación de credenciales de operador raíz
     if (interaction.user.id !== process.env.OWNER_ID) {
       return interaction.reply({
         content: '❌ No tienes permiso.',
@@ -19,9 +19,11 @@ module.exports = {
 
     await interaction.deferReply({ flags: 64 });
 
+    // Inicialización del cliente REST para la API de Discord
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 
     try {
+      // Purga del registro global de comandos de la aplicación
       await rest.put(
         Routes.applicationCommands(process.env.CLIENT_ID),
         { body: [] }

@@ -1,24 +1,24 @@
 // ---------------------------------------------------------------------------
-// HELPERS INTERNOS
+// Funciones auxiliares internas
 // ---------------------------------------------------------------------------
 function generarUUIDPatch() {
   return 'item-' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
 }
 
 // ---------------------------------------------------------------------------
-// MOTOR DE MIGRACIÓN
+// Motor de migración y actualización de esquemas de datos
 // ---------------------------------------------------------------------------
 function migrateProfiles() {
-  // 🔥 BLINDAJE ABSOLUTO: Importamos el objeto completo sin destrozarlo
+  // Importación directa del módulo de base de datos para garantizar la integridad estructural
   const dbUtils = require('../utils/db');
   
-  // Verificación de seguridad por si Node.js hace cosas raras en la caché
+  // Control de excepciones para prevenir fallos de resolución de módulos en el entorno de ejecución
   if (!dbUtils || typeof dbUtils.loadDB !== 'function') {
     console.error('❌ [N-OS ERROR CRÍTICO]: dbUtils.loadDB no es una función. El módulo db.js no se está exportando correctamente.');
     return;
   }
 
-  // Llamamos a la función directamente desde el objeto utilitario
+  // Invocación del método de carga mediante la referencia del objeto utilitario
   const db = dbUtils.loadDB(); 
   if (!db) return;
 
@@ -29,7 +29,7 @@ function migrateProfiles() {
     const profile = db[userId];
     let changed = false;
 
-    // 1. REPARACIÓN DE ESTRUCTURAS BASE
+    // Fase 1: Reparación y estandarización de estructuras de datos fundamentales
     if (!profile.inventory || !Array.isArray(profile.inventory)) {
       profile.inventory = [];
       changed = true;
@@ -50,7 +50,7 @@ function migrateProfiles() {
       changed = true;
     }
 
-    // 2. PARCHEO DE OBJETOS VIEJOS (Sin UUID)
+    // Fase 2: Actualización de entidades heredadas (Asignación de identificadores únicos)
     profile.inventory.forEach(item => {
       if (!item.uid) {
         item.uid = generarUUIDPatch();
@@ -64,9 +64,9 @@ function migrateProfiles() {
     }
   }
 
-  // 3. GUARDADO Y REPORTE
+  // Fase 3: Persistencia de datos y emisión de reporte de migración
   if (migrationCount > 0) {
-    dbUtils.saveDB(db); // Guardamos usando el objeto utilitario
+    dbUtils.saveDB(db); 
     console.log('──────────────────────────────────────────────────');
     console.log(`✅ [N-OS // MIGRACIÓN]: Base de datos actualizada.`);
     console.log(`> Fichas curadas: ${migrationCount}`);

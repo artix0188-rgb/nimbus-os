@@ -4,7 +4,7 @@ const { itemsMaster, calcularMaxSlots, calcularSlotsOcupados } = require('../ser
 const { dropItem } = require('../services/floorService');
 
 // ===========================================================================
-// 📡 SISTEMA DE RASTREO DE CUERPOS (RADAR)
+// SISTEMA DE RASTREO DE BIOMETRÍA Y RECUPERACIÓN (RADAR)
 // ===========================================================================
 const activeBodies = new Map();
 
@@ -20,11 +20,12 @@ function getBodiesInChannel(channelId) {
   const bodies = [];
   for (const [id, body] of activeBodies.entries()) {
     if (body.channelId === channelId) {
-      // Verificación: Si estaba inconsciente, miramos si ya se curó
+      // Verificación de estado: Comprueba si la entidad ha recuperado el conocimiento
       if (body.type === 'unconscious') {
         const prof = getProfile(id);
         if (!prof || (prof.status && prof.status.hp > 0)) {
-          activeBodies.delete(id); // Despertó, lo borramos del radar
+          // Constantes vitales estables, se elimina el marcador de seguimiento
+          activeBodies.delete(id); 
           continue;
         }
       }
@@ -34,7 +35,7 @@ function getBodiesInChannel(channelId) {
   return bodies;
 }
 
-// ⏳ CRONÓMETRO DE DESCOMPOSICIÓN (1 HORA MÁXIMO)
+// CRONÓMETRO DE DEGRADACIÓN BIOLÓGICA (LÍMITE: 1 HORA)
 setInterval(() => {
   const now = Date.now();
   for (const [id, body] of activeBodies.entries()) {
@@ -49,7 +50,7 @@ setInterval(() => {
 }, 60000); 
 
 // ===========================================================================
-// 🎒 RENDERIZADO DEL MENÚ PÚBLICO
+// RENDERIZADO DE INTERFAZ DE RECUPERACIÓN DE PERTENENCIAS
 // ===========================================================================
 async function renderPublicLoot(interaction, targetId, existingMessage = null, manualChannel = null) {
   const profile = getProfile(targetId);
@@ -131,20 +132,20 @@ async function renderPublicLoot(interaction, targetId, existingMessage = null, m
 }
 
 // ===========================================================================
-// 🛠️ HANDLER PRINCIPAL DE INTERACCIONES
+// CONTROLADOR PRINCIPAL DE INTERACCIONES DE SAQUEO
 // ===========================================================================
 async function handleLootInteraction(interaction) {
   const parts = interaction.customId.split('_');
   const action = parts[1]; 
   
-  // ── 0. SELECCIÓN DE CUERPO (CUANDO HAY MÚLTIPLES CAÍDOS) ──
+  // Fase 0: Selección de objetivo (Gestión de múltiples entidades neutralizadas)
   if (action === 'selbody') {
     const selectedId = interaction.values[0];
     await interaction.update({ content: `📟 Procesando apertura táctica del cuerpo...`, components: [] });
     return await renderPublicLoot(null, selectedId, null, interaction.channel);
   }
 
-  // ── 1. SELECCIÓN DE OBJETO (LANZA BURBUJA EFÍMERA) ──
+  // Fase 1: Selección de suministro (Generación de interfaz efímera)
   if (action === 'sel') {
     const targetId = parts[3];
     const itemRef = interaction.values[0];
@@ -187,7 +188,7 @@ async function handleLootInteraction(interaction) {
     });
   }
 
-  // ── 2. ACCIÓN: GUARDAR O TIRAR ──
+  // Fase 2: Ejecución de directiva (Almacenar o descartar suministro)
   if (action === 'act') {
     const subAction = parts[2]; 
     const targetId = parts[3];
@@ -269,7 +270,7 @@ async function handleLootInteraction(interaction) {
   }
 }
 
-// Fíjate en cómo aquí exportamos las funciones del radar que faltaban
+// Exportación de módulos de rastreo e interacción
 module.exports = {
   iniciarSaqueo: async (interaction, targetId, manualChannel) => {
     await renderPublicLoot(interaction, targetId, null, manualChannel);

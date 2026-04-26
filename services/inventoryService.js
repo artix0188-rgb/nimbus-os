@@ -1,7 +1,7 @@
 const { getProfile, updateProfile } = require('./profileService');
 const itemsMaster = require('../data/items');
 
-// Generador de UUID para ítems únicos
+// Generador de Identificadores Únicos Universales (UUID) para suministros
 function generarItemUUID() {
   return 'item-' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
 }
@@ -19,7 +19,7 @@ function calcularMaxSlots(userId) {
   else if (fuerza <= 9) base = 6;
   else if (fuerza >= 10) base = 7;
 
-  // Solo se suma si está en profile.equipment.mochila
+  // Condición de bonificación: Aplicable únicamente si la mochila se encuentra en la ranura de equipamiento
   const mochila = profile.equipment?.mochila;
   if (mochila) {
     const data = itemsMaster[mochila.itemId];
@@ -37,7 +37,7 @@ function calcularSlotsOcupados(userId) {
   profile.inventory.forEach(item => {
     const data = itemsMaster[item.itemId];
     if (data) {
-      // Las armaduras ocupan slots aquí. Si se equipan, salen del array inventory.
+      // Cálculo de volumen volumétrico. El equipamiento activo se excluye de la carga estructural del inventario.
       ocupados += Math.ceil(item.cantidad / data.stack) * data.slots;
     }
   });
@@ -45,7 +45,9 @@ function calcularSlotsOcupados(userId) {
   return ocupados;
 }
 
-// ── LÓGICA DE EQUIPAMIENTO Y ESTADÍSTICAS ──
+// ===========================================================================
+// RUTINAS DE GESTIÓN DE EQUIPAMIENTO Y MODIFICADORES DE ATRIBUTOS
+// ===========================================================================
 
 function aplicarBuffs(statsActuales, itemStats) {
   if (!itemStats) return statsActuales;
@@ -68,7 +70,7 @@ function removerBuffs(statsActuales, itemStats) {
 function equiparObjeto(userId, itemUid, slotOverride = null) {
   const profile = getProfile(userId);
   
-  // 🛡️ PARCHE DE SEGURIDAD PARA FICHAS VIEJAS
+  // Protocolo de seguridad: Inicialización de estructuras ausentes en registros heredados
   if (!profile.inventory) profile.inventory = [];
   if (!profile.equipment) profile.equipment = {};
   if (!profile.status) profile.status = {};
@@ -82,32 +84,32 @@ function equiparObjeto(userId, itemUid, slotOverride = null) {
 
   if (!itemData) return { success: false, msg: "El objeto está corrupto o ya no existe." };
 
-  // Definimos la ranura final: Si se envía un Override (ej: 'arma_pri'), usamos ese.
-  // Si no, usamos el tipo base del objeto (ej: 'cabeza', 'torso').
+  // Asignación de ranura de equipamiento: Prioridad a directivas explícitas (Override)
+  // Fallback: Asignación basada en la taxonomía estándar del objeto
   const targetSlot = slotOverride || itemData.type;
 
-  // 1. Si ya hay algo equipado en ese slot, lo desequipamos primero
+  // Paso 1: Procedimiento de desequipamiento previo en la ranura objetivo
   const currentEquipped = profile.equipment[targetSlot];
   if (currentEquipped) {
-    // Revertir stats del objeto viejo
+    // Reversión de modificadores de atributos del equipamiento anterior
     const oldData = itemsMaster[currentEquipped.itemId];
     if (oldData && oldData.stats) {
       profile.status.stats = removerBuffs(profile.status.stats, oldData.stats);
     }
-    // Devolver al inventario
+    // Retorno del suministro al contenedor principal (Inventario)
     profile.inventory.push(currentEquipped);
   }
 
-  // 2. Equipar el nuevo objeto
+  // Paso 2: Fijación del nuevo equipamiento
   profile.equipment[targetSlot] = itemToEquip;
   if (itemData.stats) {
     profile.status.stats = aplicarBuffs(profile.status.stats, itemData.stats);
   }
   
-  // Remover del inventario libre
+  // Extracción del suministro del contenedor principal
   profile.inventory.splice(invIndex, 1);
 
-  // Validar capacidad (por si al quitarse una mochila o perder fuerza, se excede de peso)
+  // Validación de carga estructural (Prevención de sobrecarga por penalizaciones o retiro de soporte de carga)
   updateProfile(userId, { inventory: profile.inventory, equipment: profile.equipment, status: profile.status });
   return { success: true, msg: `Te has equipado: **${itemData.name}**.` };
 }
@@ -115,7 +117,7 @@ function equiparObjeto(userId, itemUid, slotOverride = null) {
 function desequiparObjeto(userId, slotType) {
   const profile = getProfile(userId);
   
-  // 🛡️ PARCHE DE SEGURIDAD PARA FICHAS VIEJAS
+  // Protocolo de seguridad: Inicialización de estructuras ausentes en registros heredados
   if (!profile.inventory) profile.inventory = [];
   if (!profile.equipment) profile.equipment = {};
   if (!profile.status) profile.status = {};
@@ -127,7 +129,7 @@ function desequiparObjeto(userId, slotType) {
 
   const itemData = itemsMaster[itemEquipped.itemId];
   
-  // Limpieza en caso de que el objeto haya sido eliminado del código fuente
+  // Rutina de saneamiento: Manejo de entidades de datos huérfanas o eliminadas del catálogo
   if (!itemData) {
     delete profile.equipment[slotType];
     updateProfile(userId, { equipment: profile.equipment });
@@ -137,7 +139,7 @@ function desequiparObjeto(userId, slotType) {
   const maxSlots = calcularMaxSlots(userId);
   const ocupados = calcularSlotsOcupados(userId);
 
-  // Verificación crítica: Si se quita la mochila o armadura pesada, ¿tiene espacio para guardarla en el inventario?
+  // Verificación de viabilidad física: Evaluación de capacidad de almacenamiento antes de la transferencia
   let futuraCapacidad = maxSlots;
   if (slotType === 'mochila') futuraCapacidad -= (itemData.bonus || 0);
 
@@ -145,7 +147,7 @@ function desequiparObjeto(userId, slotType) {
     return { success: false, msg: `⚠️ No tienes espacio suficiente (${itemData.slots} slots) en el inventario para desequipar esto.` };
   }
 
-  // Desequipar
+  // Ejecución de la secuencia de desequipamiento
   if (itemData.stats) {
     profile.status.stats = removerBuffs(profile.status.stats, itemData.stats);
   }

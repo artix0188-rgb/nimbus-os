@@ -1,19 +1,19 @@
 const { PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 
 /**
- * Sistema de logging avanzado para NIMBUS-OS
- * * Características:
- * - Logs a consola y Discord
- * - Rate limiting automático
- * - Verificación de permisos
- * - Niveles de log configurables
- * - Cola de mensajes (Scoped)
- * - Manejo seguro de límites de Discord (2000 chars)
- * - Auto-parseo de Objetos Error
+ * Sistema de registro de eventos (Logging) avanzado para la arquitectura NIMBUS-OS
+ * Especificaciones técnicas:
+ * - Emisión dual: Consola local y canal designado en Discord.
+ * - Limitación de tasa (Rate limiting) automática.
+ * - Validación estricta de permisos de transmisión.
+ * - Jerarquía de niveles de registro configurables.
+ * - Cola de procesamiento de mensajes aislada por instancia (Scoped).
+ * - Prevención de desbordamiento de la API de Discord (Límite de 2000 caracteres).
+ * - Extracción y parseo automático de trazas en objetos Error.
  */
 
 // ============================================================================
-// CONFIGURACIÓN
+// CONFIGURACIÓN DE PARÁMETROS
 // ============================================================================
 
 const LOG_LEVELS = {
@@ -27,14 +27,14 @@ const CONFIG = {
   minLevel: process.env.DEBUG === 'true' ? LOG_LEVELS.DEBUG : LOG_LEVELS.INFO,
   discordEnabled: true,
   rateLimit: {
-    maxMessages: 5,      // Máximo 5 mensajes
-    perSeconds: 10,      // Por cada 10 segundos
-    queue: []            // Cola de timestamps
+    maxMessages: 5,      // Límite máximo de mensajes por ciclo
+    perSeconds: 10,      // Ventana de tiempo en segundos
+    queue: []            // Registro temporal de ejecuciones
   }
 };
 
 // ============================================================================
-// SISTEMA DE RATE LIMITING
+// MÓDULO DE LIMITACIÓN DE TASA (RATE LIMITING)
 // ============================================================================
 
 function checkRateLimit() {
@@ -46,7 +46,7 @@ function checkRateLimit() {
   );
   
   if (CONFIG.rateLimit.queue.length >= maxMessages) {
-    return false; // Rate limit alcanzado
+    return false; // Umbral de envíos alcanzado
   }
   
   CONFIG.rateLimit.queue.push(now);
@@ -54,18 +54,18 @@ function checkRateLimit() {
 }
 
 // ============================================================================
-// FUNCIÓN PRINCIPAL DE LOGGING
+// CONTROLADOR PRINCIPAL DE REGISTROS
 // ============================================================================
 
 module.exports = function createLogger(client) {
   const logChannelId = process.env.LOG_CHANNEL_ID;
   
-  // 🔥 MEJORA: Las colas ahora viven dentro de la instancia del logger
+  // Mejora estructural: Aislamiento de colas de mensajes por instancia del servicio
   const messageQueue = [];
   let isProcessingQueue = false;
 
   /**
-   * Procesa la cola de envíos a Discord
+   * Rutina asíncrona para el procesamiento de la cola de transmisión hacia Discord
    */
   async function processMessageQueue() {
     if (isProcessingQueue || messageQueue.length === 0) return;
@@ -73,7 +73,7 @@ module.exports = function createLogger(client) {
     isProcessingQueue = true;
     
     while (messageQueue.length > 0) {
-      const payload = messageQueue.shift(); // Puede ser un string o un objeto con embeds
+      const payload = messageQueue.shift(); // Soporta estructuras de texto plano o incrustadas (Embeds)
       
       try {
         if (!checkRateLimit()) {
@@ -101,7 +101,7 @@ module.exports = function createLogger(client) {
           break;
         }
         
-        // Enviar mensaje (Soporta texto plano o Embeds)
+        // Ejecución de la transmisión de datos
         await channel.send(payload);
         
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -115,7 +115,7 @@ module.exports = function createLogger(client) {
   }
 
   /**
-   * Envía un mensaje al canal de Discord de forma segura
+   * Transmisión segura de cargas útiles al canal de auditoría de Discord
    */
   async function sendToDiscord(payload, level) {
     if (!CONFIG.discordEnabled || !logChannelId || !client) return;
@@ -129,7 +129,7 @@ module.exports = function createLogger(client) {
   }
   
   /**
-   * Formatea un mensaje de log y extrae Stack Traces si es un Error
+   * Estandarización de formato y extracción de metadatos para objetos de clase Error
    */
   function formatMessage(level, msgOrError) {
     const icons = {
@@ -142,7 +142,7 @@ module.exports = function createLogger(client) {
     const icon = icons[level] || 'ℹ️';
     const levelName = Object.keys(LOG_LEVELS).find(k => LOG_LEVELS[k] === level);
     
-    // 🔥 MEJORA: Manejo inteligente de objetos de Error
+    // Optimización: Gestión estructurada de tipos de datos complejos y captura de trazas
     let textMessage = "";
     if (msgOrError instanceof Error) {
       textMessage = msgOrError.stack || msgOrError.message;
@@ -152,15 +152,15 @@ module.exports = function createLogger(client) {
       textMessage = String(msgOrError);
     }
 
-    // Console output normal
+    // Formateo para la salida estándar de consola
     const consoleOutput = `${icon} [${levelName}] ${textMessage}`;
 
-    // 🔥 MEJORA: Truncar a 1950 caracteres para evitar crasheos de la API de Discord
+    // Prevención de desbordamiento: Truncado a 1950 caracteres para evitar excepciones en la API de Discord
     const truncatedText = textMessage.length > 1950 
       ? textMessage.substring(0, 1950) + '... [TRUNCADO]' 
       : textMessage;
 
-    // 🔥 MEJORA: Para ERROR y WARN, usamos Embeds para que se vea más limpio
+    // Mejora de visualización: Implementación de Embeds dedicados para niveles de criticidad ERROR y WARN
     let discordPayload;
     if (level === LOG_LEVELS.ERROR || level === LOG_LEVELS.WARN) {
       const color = level === LOG_LEVELS.ERROR ? 0xff0000 : 0xffaa00;
@@ -181,7 +181,7 @@ module.exports = function createLogger(client) {
   }
   
   // ============================================================================
-  // API PÚBLICA
+  // INTERFAZ DE PROGRAMACIÓN DE APLICACIONES (API PÚBLICA)
   // ============================================================================
   
   return {

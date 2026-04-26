@@ -6,6 +6,7 @@ module.exports = {
     .setDescription('El tigre hace meow'),
 
   async execute(interaction) {
+    // Comando de prueba de conectividad y respuesta básica
     await interaction.reply('🐯 : meow');
   },
 };

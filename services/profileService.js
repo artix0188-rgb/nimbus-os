@@ -1,5 +1,5 @@
 // ============================================================================
-// PLANTILLA MAESTRA
+// PLANTILLA ESTRUCTURAL BASE
 // ============================================================================
 const DEFAULT_PROFILE = {
   nombre: 'Usuario',
@@ -11,7 +11,7 @@ const DEFAULT_PROFILE = {
   status: {
     hp: 100, maxHp: 100, radiacion: 0, ap: 0, hambre: 100, sed: 100, 
     stats: { fuerza: 1, destreza: 1, percepcion: 1, ingenio: 1, temple: 1 },
-    estados: { sangrado: false, toxicidad: false } // 🔥 NUEVA TRINIDAD DE SUPERVIVENCIA
+    estados: { sangrado: false, toxicidad: false } // Integración de parámetros avanzados de supervivencia
   },
   inventory: [],
   equipment: {},
@@ -19,7 +19,7 @@ const DEFAULT_PROFILE = {
 };
 
 // ============================================================================
-// NORMALIZACIÓN
+// RUTINA DE NORMALIZACIÓN DE DATOS
 // ============================================================================
 function normalizarPerfil(userId, profileData, database) {
   let modificado = false;
@@ -48,13 +48,13 @@ function normalizarPerfil(userId, profileData, database) {
         modificado = true;
       }
     }
-    // Limpieza de código antiguo
+    // Depuración de variables descontinuadas
     if (profileData.status.salud !== undefined) {
       delete profileData.status.salud;
       modificado = true;
     }
 
-    // Normalizar sub-objetos para evitar crasheos si faltan propiedades
+    // Normalización de estructuras anidadas para prevención de fallos críticos
     if (profileData.status.stats) {
       for (const attrKey in DEFAULT_PROFILE.status.stats) {
         if (profileData.status.stats[attrKey] === undefined) {
@@ -64,7 +64,7 @@ function normalizarPerfil(userId, profileData, database) {
       }
     }
     
-    // Normalizar los nuevos estados alterados en fichas antiguas
+    // Adaptación retrospectiva de estados alterados en registros previos
     if (profileData.status.estados) {
       for (const estadoKey in DEFAULT_PROFILE.status.estados) {
         if (profileData.status.estados[estadoKey] === undefined) {
@@ -86,7 +86,7 @@ function normalizarPerfil(userId, profileData, database) {
 }
 
 // ============================================================================
-// FUNCIONES PRINCIPALES
+// MÉTODOS DE ACCESO Y MANIPULACIÓN DE DATOS
 // ============================================================================
 
 function getProfile(userId) {
@@ -125,7 +125,7 @@ function updateProfile(userId, newData) {
   const { loadDB, saveDB } = require('../utils/db');
   const database = loadDB();
   
-  // FIX PARA CADÁVERES
+  // Corrección de estado: Reconstrucción estructural para entidades fallecidas
   if (!database[userId]) {
     database[userId] = JSON.parse(JSON.stringify(DEFAULT_PROFILE));
     database[userId].createdAt = Date.now();
@@ -141,15 +141,15 @@ function updateProfile(userId, newData) {
   if (newData.systemID !== undefined) sanitizedUpdates.systemID = String(newData.systemID).substring(0, 20);
   if (newData.isDead !== undefined) sanitizedUpdates.isDead = newData.isDead;
   
-  // 🔥 FIX DE FUSIÓN PROFUNDA (DEEP MERGE) PARA STATS Y ESTADOS
+  // Corrección algorítmica: Fusión profunda (Deep Merge) de estadísticas y estados
   if (newData.status !== undefined && typeof newData.status === 'object') {
     sanitizedUpdates.status = { ...database[userId].status, ...newData.status };
     
-    // Si se están actualizando estadísticas, no borrar las que no se enviaron
+    // Preservación de atributos inalterados durante la actualización sectorial
     if (newData.status.stats) {
       sanitizedUpdates.status.stats = { ...database[userId].status.stats, ...newData.status.stats };
     }
-    // Si se están actualizando estados (ej: activar sangrado), no desactivar la toxicidad por accidente
+    // Prevención de sobrescritura accidental en la matriz de estados biológicos
     if (newData.status.estados) {
       sanitizedUpdates.status.estados = { ...database[userId].status.estados, ...newData.status.estados };
     }

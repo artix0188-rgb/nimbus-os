@@ -9,9 +9,9 @@ const {
 const { getProfile } = require('../services/profileService');
 const { loadDB } = require('../utils/db');
 
-// ---------------------------------------------------------------------------
-// HELPERS
-// ---------------------------------------------------------------------------
+// ===========================================================================
+// Funciones auxiliares y validación de permisos
+// ===========================================================================
 
 function isOwnerOrAuthorized(userId) {
   if (userId === process.env.OWNER_ID) return true;
@@ -30,7 +30,7 @@ function isStaff(userId, member) {
   return isOwnerOrAuthorized(userId) || isAdmin(member);
 }
 
-// 🔥 ACTUALIZADO: Ahora genera Embeds azules con menciones y contexto de canal
+// Actualización: Generación de Embeds informativos con menciones y contexto de canal.
 async function sendToLogChannel(interaction, titulo, lineas) {
   const logChannelId = process.env.LOG_CHANNEL_ID;
   if (!logChannelId) return;
@@ -124,9 +124,9 @@ function generarRespuestaPerfilConEditor(profile, ownerId, editorId) {
     });
 }
 
-// ---------------------------------------------------------------------------
-// MÓDULO EXPORTADO
-// ---------------------------------------------------------------------------
+// ===========================================================================
+// Exportación del módulo principal
+// ===========================================================================
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -158,7 +158,7 @@ module.exports = {
 
     const profile = getProfile(targetId);
 
-    // ── Sin ficha ──────────────────────────────────────────────────────
+    // Validación: Usuario carece de ficha registrada
     if (!profile) {
       if (staffActing) {
         await sendToLogChannel(interaction, 'ACCESO_DESCONOCIDO', [
@@ -183,7 +183,7 @@ module.exports = {
       });
     }
 
-    // ── Log cuando staff abre ficha ajena ─────────────────────────────
+    // Auditoría: Acceso administrativo a ficha de terceros
     if (staffActing) {
       await sendToLogChannel(interaction, 'ACCESO_FICHA_AJENA', [
         `**EVENTO   :** FICHA_ABIERTA`,
@@ -193,7 +193,7 @@ module.exports = {
       ]);
     }
 
-    // ── Generar embed ──────────────────────────────────────────────────
+    // Construcción de la interfaz visual
     const embed = staffActing
       ? generarRespuestaPerfilConEditor(profile, targetId, requesterId)
       : generarRespuestaPerfil(profile, targetId);

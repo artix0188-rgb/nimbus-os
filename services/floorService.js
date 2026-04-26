@@ -5,14 +5,14 @@ function dropItem(channelId, inventoryItemData) {
   
   const dropData = {
     dropId: 'drop-' + Math.random().toString(36).substring(2, 8),
-    itemData: inventoryItemData, // Contiene el UID original, itemId y cantidad
+    itemData: inventoryItemData, // Estructura de datos: Almacena identificador único, código de objeto y existencias
     timestamp: Date.now()
   };
 
   floorDrops.get(channelId).push(dropData);
 }
 
-// Limpiador automático (cada minuto, limpia lo mayor a 20 min)
+// Rutina de recolección de basura asíncrona: purga de entidades descartadas que superen el umbral de 20 minutos
 setInterval(() => {
   const now = Date.now();
   const limite = 20 * 60 * 1000; 

@@ -6,7 +6,7 @@ module.exports = {
     .setDescription('Muestra las estadísticas detalladas del bot'),
 
   async execute(interaction) {
-    // Cálculo del Uptime
+    // Cálculo del tiempo de actividad del sistema (Uptime)
     let totalSeconds = (interaction.client.uptime / 1000);
     let days = Math.floor(totalSeconds / 86400);
     totalSeconds %= 86400;
@@ -17,13 +17,13 @@ module.exports = {
 
     const uptimeString = `${days} days, ${hours} hrs, ${minutes} mins, ${seconds} secs`;
 
-    // Datos de RAM y Latencia
+    // Extracción de métricas de rendimiento (Consumo de memoria y latencia)
     const ramUsage = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2);
     const latency = Date.now() - interaction.createdTimestamp;
 
-    // Creación del Embed estilo "Data Only"
+    // Generación de interfaz visual con métricas de rendimiento
     const statsEmbed = new EmbedBuilder()
-      .setColor('#57F287') // Verde oficial de Discord (o puedes usar 'Green')
+      .setColor('#57F287') // Asignación de código de color predeterminado
       .setTitle('Pong!')
       .setDescription(
         `data only applies to (this) child process\n` +

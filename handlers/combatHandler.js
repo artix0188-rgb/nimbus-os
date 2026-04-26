@@ -15,7 +15,9 @@ const MAG_SIZES = {
   "rifle_sniper_308": 5, "rifle_sniper_3006": 5, "arma_antigua": 5, "rifle_alto_calibre": 10
 };
 
-// ── UTILIDADES ──
+// ===========================================================================
+// Funciones utilitarias
+// ===========================================================================
 function getAmmoCount(inventory, ammoType) {
   if (!inventory || !ammoType) return 0;
   return inventory.filter(i => itemsMaster[i.itemId]?.ammoType === ammoType || i.itemId === ammoType).reduce((acc, curr) => acc + curr.cantidad, 0);
@@ -29,17 +31,17 @@ function calculateArmor(profile) {
     const itemId = profile.equipment[slot]?.itemId;
     if (itemId && itemsMaster[itemId]?.armor) ap += itemsMaster[itemId].armor;
   });
-  return Math.min(50, ap); // Máximo 50 de Blindaje AP
+  return Math.min(50, ap); // Límite máximo de blindaje fijado en 50 AP
 }
 
-// 💾 PERSISTENCIA EN TIEMPO REAL
+// Persistencia de datos en tiempo real
 function guardarEstadoJugador(targetId, hp, inventory, mags) {
   const profile = getProfile(targetId);
   if (!profile) return;
   if (!profile.status) profile.status = {};
   
   profile.status.hp = Math.floor(Math.max(0, Math.min(profile.status.maxHp || 100, hp)));
-  // 🔥 FIX: profile.status.salud eliminado para siempre
+  // Corrección: el parámetro profile.status.salud ha sido descontinuado de la base de datos
   
   const updates = { status: profile.status, inventory: inventory };
   if (mags) updates.mags = mags;
@@ -47,12 +49,14 @@ function guardarEstadoJugador(targetId, hp, inventory, mags) {
   updateProfile(targetId, updates);
 }
 
-// ── RENDERIZADO VISUAL JRPG (CANVAS + ANSI) ──
+// ===========================================================================
+// Módulo de renderizado visual de interfaz (Canvas y ANSI)
+// ===========================================================================
 async function renderCombat(interaction, combatId) {
   const combat = engine.activeCombats.get(combatId);
   if (!combat) return;
 
-  // --- EMBED 1: ENEMIGOS (ARRIBA) ---
+  // Bloque visual superior: Estado de entidades hostiles
   const embedEnemies = new EmbedBuilder().setTitle('⚠️ SISTEMA N-OS // ENFRENTAMIENTO HOSTIL').setColor(0xff0000);
 
   if (combat.isLethal) {
@@ -64,18 +68,18 @@ async function renderCombat(interaction, combatId) {
     const status = e.hp > 0 ? `${engine.generarBarra(e.hp, e.maxHp, false)} \`${Math.floor(e.hp)}/${e.maxHp} HP\`` : '💀 ELIMINADO';
     embedEnemies.addFields({ name: `🩸 **${e.name}** [ID: ${i}]`, value: `> ${status}`, inline: true });
 
-    // 🔥 FIX DE SIMETRÍA 2x2: Si hay exactamente 4 enemigos, inyectamos un campo invisible tras el segundo
+    // Corrección de simetría: Inserción de un campo vacío condicional para asegurar alineación visual 2x2
     if (totalE === 4 && i === 1) {
       embedEnemies.addFields({ name: '\u200b', value: '\u200b', inline: true });
     }
   });
 
-  // --- EMBED 2: LA PANTALLA DE BATALLA (MEDIO) ---
+  // Bloque visual central: Renderizado del escenario de combate
   const embedImage = new EmbedBuilder()
     .setColor(0x1a1a1a)
     .setImage('attachment://combat_render.png');
 
-  // --- EMBED 3: JUGADORES (ABAJO) ---
+  // Bloque visual inferior: Estado del escuadrón táctico
   const embedPlayers = new EmbedBuilder().setTitle('🛡️ ESCUADRÓN ALIADO').setColor(0x3b82f6);
 
   combat.players.forEach(p => {
@@ -131,25 +135,25 @@ async function renderCombat(interaction, combatId) {
     embedPlayers.addFields({ name: `${isTurn}${p.name}${defendTag}`, value: `${status}${wepDisplay}`, inline: true });
   });
 
-  // --- EMBED 4: REGISTRO TÁCTICO INDEPENDIENTE (ABAJO DEL TODO) ---
+  // Registro de eventos tácticos (Log independiente)
   let ansiLog = '```ansi\n';
-  const ultimosLogs = combat.log.slice(-6); // Muestra las últimas 6 acciones para dar más contexto
+  const ultimosLogs = combat.log.slice(-6); // Restricción del historial a los 6 últimos eventos para legibilidad
   
   if (ultimosLogs.length === 0) {
     ansiLog += '\u001b[30mEsperando comandos tácticos...\u001b[0m\n';
   } else {
     ultimosLogs.forEach(line => {
-      // Limpiamos los bold de markdown porque no funcionan dentro de ansi
+      // Limpieza de marcadores markdown no procesables por sintaxis ANSI
       let cleanLine = line.replace(/\*\*/g, '').replace(/\*/g, '').replace(/`/g, '');
       
       if (cleanLine.includes('¡CRÍTICO!') || cleanLine.includes('MUERTO') || cleanLine.includes('fatal') || cleanLine.includes('derribado')) {
-        ansiLog += `\u001b[1;31m${cleanLine}\u001b[0m\n`; // Rojo Fuerte (Peligro/Crítico/Muerte)
+        ansiLog += `\u001b[1;31m${cleanLine}\u001b[0m\n`; // Alerta roja para eventos letales o críticos
       } else if (cleanLine.includes('falla') || cleanLine.includes('escapa') || cleanLine.includes('evadir') || cleanLine.includes('mitiga')) {
-        ansiLog += `\u001b[34m${cleanLine}\u001b[0m\n`; // Azul (Esquivas/Fallos/Mitigación)
+        ansiLog += `\u001b[34m${cleanLine}\u001b[0m\n`; // Alerta azul para eventos de evasión o defensa
       } else if (cleanLine.includes('usa [') || cleanLine.includes('recupera') || cleanLine.includes('estabilizado')) {
-        ansiLog += `\u001b[32m${cleanLine}\u001b[0m\n`; // Verde (Curación)
+        ansiLog += `\u001b[32m${cleanLine}\u001b[0m\n`; // Alerta verde para intervenciones de estabilización médica
       } else {
-        ansiLog += `\u001b[33m${cleanLine}\u001b[0m\n`; // Amarillo (Daño normal/Recargas)
+        ansiLog += `\u001b[33m${cleanLine}\u001b[0m\n`; // Alerta estándar (amarilla) para hostilidades comunes
       }
     });
   }
@@ -188,6 +192,7 @@ async function renderCombat(interaction, combatId) {
   if (row1.components.length > 0) components.push(row1);
   if (row2.components.length > 0) components.push(row2);
 
+  // Eliminación de ping temporal anterior
   if (combat.lastPingMsgId) {
     try {
       const oldPing = await combat.message.channel.messages.fetch(combat.lastPingMsgId);
@@ -196,7 +201,7 @@ async function renderCombat(interaction, combatId) {
     combat.lastPingMsgId = null; 
   }
 
-  // --- ENSAMBLADO Y GENERACIÓN DE CANVAS ---
+  // Ensamblado del lienzo perimetral
   let combatImageAttachment;
   try {
     const channelCategoryId = combat.message.channel.parentId; 
@@ -227,7 +232,9 @@ async function renderCombat(interaction, combatId) {
   }
 }
 
-// ── ARRANCADOR DE COMBATE ──
+// ===========================================================================
+// Inicializador del flujo de combate
+// ===========================================================================
 async function arrancarCombate(interaction, combatId) {
   const combat = engine.activeCombats.get(combatId);
   

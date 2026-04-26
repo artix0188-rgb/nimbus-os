@@ -26,7 +26,7 @@ module.exports = {
     .setDescription('Publica y actualiza el catálogo maestro en el canal actual.'),
 
   async execute(interaction) {
-    // 🛡️ CONTROL DE ACCESO
+    // Control de acceso y verificación de nivel de autorización
     const isStaff = perfilCmd.helpers.isStaff(interaction.user.id, interaction.member);
     if (!isStaff && interaction.user.id !== process.env.OWNER_ID) {
       return interaction.reply({ 
@@ -37,23 +37,23 @@ module.exports = {
 
     await interaction.deferReply({ flags: 64 });
 
-    // 🧹 1. PURGA DEL CATÁLOGO ANTERIOR
-    // Busca los últimos 50 mensajes del canal y borra los que sean del bot
+    // 1. Purga del catálogo anterior
+    // Recupera los últimos 50 mensajes del canal y elimina aquellos generados por el bot.
     try {
       const fetched = await interaction.channel.messages.fetch({ limit: 50 });
       const botMessages = fetched.filter(m => m.author.id === interaction.client.user.id);
       
       if (botMessages.size > 0) {
-        // Borramos uno por uno de forma segura para evitar problemas con mensajes de más de 14 días
+        // Eliminación secuencial para evitar conflictos con la limitación de mensajes de más de 14 días en la API de Discord.
         for (const [id, msg] of botMessages) {
           await msg.delete().catch(() => null);
         }
       }
     } catch (error) {
-      interaction.client.logger.warn('No se pudieron limpiar los mensajes anteriores del catálogo.');
+      interaction.client.logger.warn('Fallo en la eliminación de los mensajes anteriores del catálogo.');
     }
 
-    // 📦 2. AGRUPACIÓN DE OBJETOS
+    // 2. Agrupación y categorización de objetos
     const categorias = {};
     for (const [id, data] of Object.entries(itemsMaster)) {
       const tipo = data.type || 'otros';
@@ -62,7 +62,7 @@ module.exports = {
       categorias[tipo].push(`> **${data.name}** | \`${id}\``);
     }
 
-    // 📄 3. CONSTRUCCIÓN DE EMBEDS (Límite 2000 caracteres)
+    // 3. Construcción de embeds (Sujeto al límite de 2000 caracteres de Discord)
     const embeds = [];
     let currentDescription = "";
     let isFirstEmbed = true;
@@ -97,9 +97,8 @@ module.exports = {
       embeds.push(embed);
     }
 
-    // 📤 4. ENVÍO SEGURO POR LOTES
-    // Discord permite máx 10 embeds y 6000 caracteres totales por mensaje.
-    // Dividimos los embeds en "paquetes" para enviarlos en varios mensajes si el catálogo es gigante.
+    // 4. Envío de datos por lotes
+    // Prevención de errores de la API dividiendo el envío en paquetes máximos de 10 embeds o 5500 caracteres.
     let currentChunk = [];
     let currentLength = 0;
 
@@ -120,7 +119,7 @@ module.exports = {
       await interaction.channel.send({ embeds: currentChunk });
     }
 
-    // Confirmación silenciosa para quien ejecutó el comando
+    // Confirmación de ejecución exitosa
     return interaction.editReply({ content: '✅ Catálogo maestro actualizado y desplegado en este canal.' });
   }
 };

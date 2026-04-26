@@ -26,7 +26,7 @@ module.exports = {
     const target   = interaction.options.getUser('usuario');
     const nuevoID  = interaction.options.getString('id').trim();
 
-    // 🔒 VERIFICACIÓN DE PERMISOS ESTRICTA
+    // Validación estricta de credenciales y permisos administrativos
     const isPrivileged = perfilCmd.helpers.isOwnerOrAuthorized(ejecutor.id) ||
                          member.permissions.has(PermissionFlagsBits.Administrator);
 
@@ -37,7 +37,7 @@ module.exports = {
       });
     }
 
-    // 🔍 VALIDACIÓN DE EXISTENCIA
+    // Verificación de existencia del registro en la base de datos
     const profile = getProfile(target.id);
     if (!profile) {
       return interaction.reply({
@@ -46,7 +46,7 @@ module.exports = {
       });
     }
 
-    // 📏 VALIDACIONES DE FORMATO
+    // Comprobación de integridad y formato de la cadena de entrada
     if (!/^[a-zA-Z0-9_-]+$/.test(nuevoID)) {
       return interaction.reply({
         content: '❌ **NIMBUS-OS // ERROR**: El ID solo puede contener letras, números, guiones y guiones bajos.',
@@ -61,7 +61,7 @@ module.exports = {
       });
     }
 
-    // 🔁 EVITAR DUPLICADOS
+    // Prevención de colisiones de identificadores en el sistema
     const db = loadDB();
     const existe = Object.values(db).some(u => u.systemID === nuevoID && u.id !== target.id);
     if (existe) {
@@ -73,13 +73,13 @@ module.exports = {
 
     const oldID = profile.systemID || 'N/A';
 
-    // 💾 GUARDAR USANDO EL SERVICIO (Para mantener coherencia de datos)
+    // Persistencia de datos mediante el servicio centralizado para garantizar coherencia estructural
     updateProfile(target.id, { 
       systemID: nuevoID,
       lastModifiedBy: ejecutor.id 
     });
 
-    // 🔥 LOG AL CANAL (Embed Azul con Menciones)
+    // Emisión de reporte de auditoría sobre la alteración del identificador
     await perfilCmd.helpers.sendToLogChannel(interaction, 'SOBRESCRITURA_SISTEMA', [
       `**EVENTO   :** CAMBIO_DE_SYSTEM_ID (MANUAL)`,
       `**OPERADOR :** <@${ejecutor.id}> (ADMIN)`,

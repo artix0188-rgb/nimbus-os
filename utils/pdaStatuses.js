@@ -1,3 +1,8 @@
+/**
+ * Diccionario de estados rotativos para la interfaz visual del sistema.
+ * Estas cadenas son consumidas por el algoritmo de "Shuffle Bag" en index.js
+ * para proporcionar retroalimentación inmersiva en el perfil del bot.
+ */
 module.exports = [
   'NIMBUS-OS v4.0.2 | Sistema Activo',
   'Inicializando módulos de supervivencia...',

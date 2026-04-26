@@ -16,7 +16,7 @@ const {
 } = require('../services/inventoryService');
 
 // ===========================================================================
-// DICCIONARIO DE CARGADORES (MAG_SIZES)
+// Diccionario de capacidades de cargadores por arma
 // ===========================================================================
 const MAG_SIZES = {
   "pistola_9mm": 15, "pistola_45": 7, "pistola_40": 13, "pistola_380": 8, "pistola_10mm": 10,
@@ -27,9 +27,9 @@ const MAG_SIZES = {
   "rifle_sniper_308": 5, "rifle_sniper_3006": 5, "arma_antigua": 5, "rifle_alto_calibre": 10
 };
 
-// ---------------------------------------------------------------------------
-// RENDERIZADO VISUAL - MENÚ DE CONSUMIBLES (REUTILIZABLE)
-// ---------------------------------------------------------------------------
+// ===========================================================================
+// Renderizado visual: Menú de selección de consumibles
+// ===========================================================================
 async function renderUsarMenu(interaction, targetId, origin, notice = '') {
   const profile = getProfile(targetId);
   const baseId = `target_${targetId}_orig_${origin}`;
@@ -92,9 +92,9 @@ async function renderUsarMenu(interaction, targetId, origin, notice = '') {
   }
 }
 
-// ---------------------------------------------------------------------------
-// RENDERIZADO VISUAL - INVENTARIO PRINCIPAL
-// ---------------------------------------------------------------------------
+// ===========================================================================
+// Renderizado visual: Inventario principal e interfaz de equipo
+// ===========================================================================
 async function renderInventory(interaction, targetId, page = 0, notice = '', isEquipMode = false, origin = 'perfil') {
   const profile = getProfile(targetId);
   if (!profile) return;
@@ -149,7 +149,7 @@ async function renderInventory(interaction, targetId, page = 0, notice = '', isE
     
     let displayName = data.name;
 
-    // 🔥 EL ARREGLO: Usar item.itemId en vez de data.itemId
+    // Corrección: Se requiere el ID del objeto instanciado en lugar de la base de datos
     if (data.ammoType && MAG_SIZES[item.itemId]) {
       const slotCorto = slot === 'arma_pri' ? 'pri' : 'sec';
       const maxMag = MAG_SIZES[item.itemId];
@@ -163,16 +163,16 @@ async function renderInventory(interaction, targetId, page = 0, notice = '', isE
 
   const eqList = [
     `> **Cabeza:** ${getEqName('cabeza')}`,
-    `> **Cara  :** ${getEqName('cara')}`,
-    `> **Torso :** ${getEqName('torso')}`,
+    `> **Cara:** ${getEqName('cara')}`,
+    `> **Torso:** ${getEqName('torso')}`,
     `> **Brazos:** ${getEqName('brazos')}`,
     `> **Piernas:** ${getEqName('piernas')}`,
-    `> **Pies  :** ${getEqName('pies')}`,
-    `> **Arma 1:** ${getEqName('arma_pri')}`,
-    `> **Arma 2:** ${getEqName('arma_sec')}`,
+    `> **Pies:** ${getEqName('pies')}`,
+    `> **Arma Principal:** ${getEqName('arma_pri')}`,
+    `> **Arma Secundaria:** ${getEqName('arma_sec')}`,
     `> **Mochila:** ${getEqName('mochila')}`
   ].join('\n');
-  embed.addFields({ name: '▼ EQUIPAMIENTO TÁCTICO', value: eqList });
+  embed.addFields({ name: '▼ EQUIPAMIENTO', value: eqList });
 
   const rows = [];
 
@@ -239,9 +239,9 @@ async function renderInventory(interaction, targetId, page = 0, notice = '', isE
   }
 }
 
-// ---------------------------------------------------------------------------
-// HANDLER PRINCIPAL
-// ---------------------------------------------------------------------------
+// ===========================================================================
+// Controlador principal de interacciones de inventario
+// ===========================================================================
 module.exports = async function handleInventory(interaction, manualTargetId = null, manualOrigin = null) {
   const userId = interaction.user.id;
   const customId = interaction.customId || '';
@@ -260,7 +260,7 @@ module.exports = async function handleInventory(interaction, manualTargetId = nu
 
   // 1. Selección de ranura para armas
   if (customId.startsWith('inv_set_weapon_')) {
-    await interaction.update({ content: `⏱️ Procesando anclaje táctico...`, components: [] }).catch(() => null);
+    await interaction.update({ content: `⏱️ Procesando equipamiento...`, components: [] }).catch(() => null);
     
     const parts = customId.split('_');
     const slot = parts[3]; 
@@ -283,7 +283,7 @@ module.exports = async function handleInventory(interaction, manualTargetId = nu
     return interaction.editReply({ content: `✅ **[N-OS]**: ${res.msg} (Refresca o navega en tu PDA para ver los cambios)` }).catch(() => null);
   }
 
-  // 2. Equipamiento - Menús
+  // 2. Equipamiento: Paginación y botones
   if (customId.startsWith('inv_btn_equip_')) {
     if (userId !== targetId) return interaction.reply({ content: '❌ No puedes manipular el equipo de otro usuario.', flags: 64 });
     await interaction.deferUpdate().catch(() => null); 
@@ -334,7 +334,7 @@ module.exports = async function handleInventory(interaction, manualTargetId = nu
   }
 
   // =======================================================================
-  // USAR OBJETOS
+  // Consumo y aplicación de objetos
   // =======================================================================
   if (customId.startsWith('inv_btn_usar_')) {
     if (userId !== targetId) return interaction.reply({ content: '❌ Terminal ajena.', flags: 64 });
@@ -393,7 +393,7 @@ module.exports = async function handleInventory(interaction, manualTargetId = nu
   }
 
   // =======================================================================
-  // RECARGAR TODAS LAS ARMAS
+  // Recarga balística de armas
   // =======================================================================
   if (customId.startsWith('inv_btn_recargar_')) {
     if (userId !== targetId) return interaction.reply({ content: '❌ Terminal ajena.', flags: 64 });
@@ -472,24 +472,24 @@ module.exports = async function handleInventory(interaction, manualTargetId = nu
     await renderInventory(interaction, targetId, 0, '', false, origin);
 
     await interaction.followUp({ 
-      content: `📟 **[N-OS // REPORTE DE BALÍSTICA]**\n\n${logRecargas.join('\n')}`, 
+      content: `📟 **[N-OS // REPORTE DE RECARGA]**\n\n${logRecargas.join('\n')}`, 
       flags: 64 
     });
 
     if (cambios) {
-      await interaction.channel.send({ content: `🔄 **${profile.nombre}** realiza una revisión táctica y recarga sus armas.` });
+      await interaction.channel.send({ content: `🔄 **${profile.nombre}** revisa su equipo y recarga sus armas.` });
     }
     
     return;
   }
 
-  // 5. Paginación del inventario
+  // Paginación base del inventario
   if (customId.startsWith('inv_page_')) {
     const page = parseInt(customId.split('_')[2]);
     await interaction.deferUpdate().catch(() => null);
     return await renderInventory(interaction, targetId, page, '', false, origin);
   }
 
-  // 6. Carga inicial
+  // Despliegue primario
   return await renderInventory(interaction, targetId, 0, '', false, origin);
 };

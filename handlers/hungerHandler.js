@@ -3,20 +3,20 @@ const { loadDB } = require('../utils/db');
 const { processDeath } = require('../services/deathService'); 
 
 // ===========================================================================
-// CONFIGURACIÓN — ajustable por .env
+// Parámetros de configuración (Ajustables mediante variables de entorno)
 // ===========================================================================
 
 function getConfig() {
   return {
-    hungerDecay:  parseFloat(process.env.HUNGER_DECAY  ?? '1'),    // % por mensaje
-    thirstDecay:  parseFloat(process.env.THIRST_DECAY  ?? '1.5'),  // % por mensaje
+    hungerDecay:  parseFloat(process.env.HUNGER_DECAY  ?? '1'),    // Porcentaje de degradación metabólica
+    thirstDecay:  parseFloat(process.env.THIRST_DECAY  ?? '1.5'),  // Porcentaje de degradación de hidratación
     categoryId:   process.env.RP_CATEGORY_ID ?? '1495662455647506523',
     healthDrain:  parseFloat(process.env.CRITICAL_HEALTH_DRAIN ?? '5')
   };
 }
 
 // ===========================================================================
-// MAPA DE PROXIES
+// Mapeo e indexación de perfiles proxy (Tupperbox/Webhooks)
 // ===========================================================================
 function findUserByProxy(webhookUsername) {
   const db = loadDB();
@@ -32,7 +32,7 @@ function findUserByProxy(webhookUsername) {
 }
 
 // ===========================================================================
-// AVISOS DE HAMBRE / SED
+// Gestión de alertas biométricas (Nutrición e Hidratación)
 // ===========================================================================
 const THRESHOLDS = [75, 50, 25, 5];
 
@@ -57,7 +57,7 @@ function getThresholdAlert(stat, prev, current) {
 }
 
 // ===========================================================================
-// HANDLER PRINCIPAL
+// Controlador principal del motor de desgaste vital
 // ===========================================================================
 
 module.exports = async function handleHunger(message, client) {
@@ -78,7 +78,7 @@ module.exports = async function handleHunger(message, client) {
   if (profile.isDead) return;
   if (profile.status?.paused) return;
 
-  // ── 1. Extraer Estado Actual ─────────────────────────────────────────
+  // 1. Extracción del estado vital del registro
   const prevHambre = profile.status?.hambre ?? 100;
   const prevSed    = profile.status?.sed    ?? 100;
   const prevHp     = profile.status?.hp     ?? 100;
@@ -87,7 +87,7 @@ module.exports = async function handleHunger(message, client) {
   const radiacion  = profile.status?.radiacion || 0;
   const maxHpBase  = profile.status?.maxHp || 100;
 
-  // ── 2. Calcular Degaste (Toxicidad afecta a la Sed) ────────────────
+  // 2. Cálculo matemático del desgaste fisiológico
   const actualThirstDecay = estados.toxicidad ? (config.thirstDecay * 4) : config.thirstDecay;
   
   const newHambre = Math.max(0, prevHambre - config.hungerDecay);
@@ -101,7 +101,7 @@ module.exports = async function handleHunger(message, client) {
   let avisoHpCritico = null;
   const motivosDano = [];
 
-  // ── 3. Calcular Daño (Hambre, Sed y Sangrado) ──────────────────────
+  // 3. Procesamiento de daño estructural por deficiencias y hemorragia
   if (enZonaCritica) {
     newHp = Math.max(0, newHp - config.healthDrain);
     if (hambreCritica) motivosDano.push('inanición');
@@ -109,18 +109,17 @@ module.exports = async function handleHunger(message, client) {
   }
 
   if (estados.sangrado) {
-    newHp = Math.max(0, newHp - 3); // -3 HP por mensaje por sangrado
+    newHp = Math.max(0, newHp - 3); // Aplicación de ratio de pérdida de sangre por evento
     motivosDano.push('hemorragia activa');
   }
 
-  // ── 4. Aplicar Límite de Radiación ───────────────────────────────────
-  // La radiación recorta tu vida máxima posible.
+  // 4. Aplicación del limitador máximo de HP en base al envenenamiento por radiación
   const topeVidaReal = Math.max(1, maxHpBase - radiacion);
   if (newHp > topeVidaReal) {
     newHp = topeVidaReal;
   }
 
-  // ── 5. Generar Avisos de Peligro Vital ───────────────────────────────
+  // 5. Compilación de advertencias sistémicas
   if (motivosDano.length > 0) {
     const yaAvisado = profile.status?.criticalWarned ?? false;
     if (!yaAvisado && newHp > 0) {
@@ -130,7 +129,7 @@ module.exports = async function handleHunger(message, client) {
     }
   }
 
-  // ── 6. Guardar nuevo estado ──────────────────────────────────────────
+  // 6. Almacenamiento del estado modificado
   const newStatus = {
     ...profile.status,
     hambre: newHambre,
@@ -141,7 +140,7 @@ module.exports = async function handleHunger(message, client) {
       : false
   };
 
-  // 🔥 7. CHECK DE MUERTE DEFINITIVA 🔥
+  // 7. Verificación de condición terminal (Muerte)
   if (newHp <= 0 && prevHp > 0) {
     let causaMuerte = 'Fallo Sistémico Múltiple';
     
@@ -151,13 +150,13 @@ module.exports = async function handleHunger(message, client) {
     else if (sedCritica) causaMuerte = 'Deshidratación Severa';
 
     await processDeath(userId, profile, causaMuerte, message.channel, client);
-    return; // Ya murió, no enviamos más avisos
+    return; // Interrupción del ciclo, el sujeto ha perecido.
   }
 
-  // Actualización normal si sigue vivo
+  // Guardado persistente asumiendo la supervivencia del operador
   updateProfile(userId, { status: newStatus });
 
-  // ── 8. Construir y enviar avisos al usuario ──────────────────────────
+  // 8. Transmisión del informe de estatus
   const avisos = [];
 
   const alertHambre = getThresholdAlert('hambre', prevHambre, newHambre);
@@ -166,7 +165,7 @@ module.exports = async function handleHunger(message, client) {
   const alertSed = getThresholdAlert('sed', prevSed, newSed);
   if (alertSed) avisos.push(alertSed);
 
-  // Alerta extra por si se acaba de infectar
+  // Alerta condicional por exposición reciente a toxicidad
   if (estados.toxicidad && prevSed > 75 && newSed <= 75) {
       avisos.push(`☣️ **[N-OS] — ANOMALÍA BIOLÓGICA**: Tu ritmo de deshidratación es anormalmente alto. Posible cuadro febril detectado.`);
   }
@@ -178,6 +177,6 @@ module.exports = async function handleHunger(message, client) {
   try {
     await message.channel.send(`<@${userId}>\n${avisos.join('\n\n')}`);
   } catch (err) {
-    console.error('[N-OS] Error enviando aviso de hambre/sed:', err);
+    console.error('[N-OS] Falla en la transmisión de informe biométrico:', err);
   }
 };

@@ -16,6 +16,7 @@ module.exports = {
     const target = interaction.options.getUser('usuario') || interaction.user;
     const isSelf = target.id === interaction.user.id;
     
+    // Verificación de credenciales de administrador para acceso a inventarios de terceros
     if (!isSelf) {
       const isStaff = perfilCmd.helpers.isStaff(interaction.user.id, interaction.member);
       if (!isStaff) {
@@ -26,7 +27,7 @@ module.exports = {
       }
     }
 
-   
+    // Despliegue de la interfaz de inventario
     return await handleInventory(interaction, target.id, 'inv');
   }
 };

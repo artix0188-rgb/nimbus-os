@@ -1,6 +1,6 @@
 const activeCombats = new Map();
 
-// 🔥 FIX: AHORA SOLO DEVUELVE LOS BLOQUES, SIN TEXTO EXTRA 🔥
+// Corrección: Generación de cadena visual de bloques sin información adicional
 function generarBarra(actual, max) {
   const porcentaje = Math.max(0, Math.min(100, Math.round((actual / max) * 100)));
   const lleno = Math.round((porcentaje / 100) * 10);
@@ -8,41 +8,41 @@ function generarBarra(actual, max) {
   return '█'.repeat(lleno) + '░'.repeat(vacio);
 }
 
-// 🔥 FIX: AHORA ACEPTA UNA SOLA LISTA COMO LO PIDE TU COMANDO 🔥
+// Corrección: Soporte para una lista unificada de entidades
 function calcularIniciativa(combatientes) {
-  // Tirada de iniciativa: 1d20 + Destreza
+  // Cálculo de iniciativa: Tirada pseudoaleatoria (1-20) más modificador de destreza
   combatientes.forEach(c => {
     const destreza = c.stats?.destreza || 0;
     c.iniciativa = Math.floor(Math.random() * 20) + 1 + destreza;
   });
 
-  // Ordenar de mayor a menor iniciativa para la cola de turnos
+  // Ordenamiento descendente para establecimiento de la cola de turnos
   return combatientes.sort((a, b) => b.iniciativa - a.iniciativa);
 }
 
 function calcularAtaque(atkStats, defStats, arma) {
-  // 1. Determinar qué estadística usa el atacante
-  let atkStatVal = atkStats.destreza || 0; // Armas de fuego y blancas usan Destreza
+  // Selección del atributo de ataque primario
+  let atkStatVal = atkStats.destreza || 0; // Sistemas balísticos y armas de filo emplean Destreza
   
   if (!arma || (arma.type && arma.type.includes('contundente'))) {
-    atkStatVal = atkStats.fuerza || 0; // Puñetazos y armas contundentes usan Fuerza
+    atkStatVal = atkStats.fuerza || 0; // Impactos físicos y armas contundentes emplean Fuerza
   }
 
-  // 2. Determinar la evasión del defensor
+  // Cálculo del valor de evasión de la entidad defensora
   const defStatVal = defStats.destreza || 0;
 
-  // 3. FÓRMULA DE PRECISIÓN
-  // Base 75% + (5% por stat atacante) - (5% por stat defensor)
+  // Cálculo algorítmico de precisión de impacto
+  // Probabilidad base modificada por la diferencia de atributos
   let hitChance = 75 + (atkStatVal * 5) - (defStatVal * 5);
   
-  // Limitadores: Siempre hay un 5% de fallar y un 15% mínimo de acertar
+  // Aplicación de límites absolutos de éxito y fracaso
   hitChance = Math.max(15, Math.min(95, hitChance));
 
-  const roll = Math.floor(Math.random() * 100) + 1; // Tirada 1-100
+  const roll = Math.floor(Math.random() * 100) + 1; // Generación de factor aleatorio
   const isHit = roll <= hitChance;
   
-  // 4. GOLPES CRÍTICOS
-  // Crítico garantizado si la tirada es muy baja, escalando con tu stat
+  // Evaluación de impacto crítico
+  // Modificador de probabilidad crítica en función de los atributos de ataque
   const critChance = Math.max(5, Math.min(25, atkStatVal * 2.5));
   const isCrit = isHit && roll <= critChance;
 
@@ -61,8 +61,8 @@ function calcularMitigacion(defStats, dmgIn) {
   let finalDamage = dmgIn;
   let tipoMitigacion = null;
 
-  // 1. ESQUIVA PARCIAL (Glancing Blow)
-  // 5% de chance por cada punto de destreza del defensor de mitigar la mitad del daño
+  // Cálculo de evasión parcial
+  // Probabilidad de mitigación basada en la destreza del defensor
   const partialDodgeChance = Math.max(0, destreza * 5); 
   const roll = Math.floor(Math.random() * 100) + 1;
 
@@ -71,14 +71,14 @@ function calcularMitigacion(defStats, dmgIn) {
     tipoMitigacion = "logra una esquiva parcial";
   }
 
-  // 2. MITIGACIÓN POR TEMPLE (Resistencia dura)
-  // Cada punto de temple resta daño plano al impacto
+  // Cálculo de mitigación directa por resistencia física
+  // Reducción de daño escalar en función del atributo de temple
   let templeReduction = Math.floor(temple * 1.5); 
   if (templeReduction > 0) {
     finalDamage -= templeReduction;
   }
 
-  // El daño mínimo si el golpe acierta siempre será 1
+  // Límite de daño mínimo garantizado en impactos exitosos
   if (finalDamage < 1) finalDamage = 1;
 
   return {

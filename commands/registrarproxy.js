@@ -25,7 +25,7 @@ module.exports = {
     const target   = interaction.options.getUser('usuario') || executor;
     const isSelf   = target.id === executor.id;
 
-    // Solo staff puede gestionar proxies de otros
+    // Verificación de privilegios administrativos para registros de terceros
     if (!isSelf) {
       const isPrivileged = perfilCmd.helpers.isOwnerOrAuthorized(executor.id) ||
                            perfilCmd.helpers.isAdmin(member);
@@ -55,7 +55,7 @@ module.exports = {
       });
     }
 
-    // Comprobar que no está registrado por otro usuario
+    // Validación de unicidad global del proxy en la base de datos
     const db = loadDB();
     for (const [uid, prof] of Object.entries(db)) {
       if (uid === target.id) continue;
@@ -71,7 +71,7 @@ module.exports = {
     proxiesActuales.push(nombre);
     updateProfile(target.id, { proxies: proxiesActuales });
 
-    // 🔥 CORRECCIÓN: Usar 'interaction' y formato de log azul con menciones
+    // Emisión de registro de auditoría estandarizado
     await perfilCmd.helpers.sendToLogChannel(interaction, 'PROXY_REGISTRADO', [
       `**OPERADOR :** <@${executor.id}> ${!isSelf ? '(⚠️ ACCIÓN DE STAFF)' : ''}`,
       ...(isSelf ? [] : [`**SUJETO   :** <@${target.id}>`]),

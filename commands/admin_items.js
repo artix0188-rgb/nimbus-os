@@ -1,14 +1,6 @@
-const { 
-  SlashCommandBuilder 
-} = require('discord.js');
-
+const { SlashCommandBuilder } = require('discord.js');
 const { getProfile, updateProfile } = require('../services/profileService');
-const { 
-  itemsMaster, 
-  generarItemUUID, 
-  calcularMaxSlots, 
-  calcularSlotsOcupados 
-} = require('../services/inventoryService');
+const { itemsMaster, generarItemUUID, calcularMaxSlots, calcularSlotsOcupados } = require('../services/inventoryService');
 const perfilCmd = require('./perfil');
 
 module.exports = {
@@ -19,34 +11,18 @@ module.exports = {
     .addSubcommand(sub =>
       sub.setName('dar')
         .setDescription('Inyectar un objeto en un inventario')
-        .addStringOption(o => 
-          o.setName('id')
-            .setDescription('ID técnico del objeto')
-            .setRequired(true)
-        )
-        .addIntegerOption(o => 
-          o.setName('cantidad')
-            .setDescription('Cantidad de unidades')
-            .setRequired(true)
-        )
-        .addUserOption(o => 
-          o.setName('objetivo')
-            .setDescription('Usuario receptor')
-            .setRequired(false)
-        )
+        .addStringOption(o => o.setName('id').setDescription('ID técnico del objeto').setRequired(true))
+        .addIntegerOption(o => o.setName('cantidad').setDescription('Cantidad de unidades').setRequired(true))
+        .addUserOption(o => o.setName('objetivo').setDescription('Usuario receptor').setRequired(false))
     )
     .addSubcommand(sub =>
       sub.setName('limpiar')
         .setDescription('Purgar inventario y equipo de un usuario')
-        .addUserOption(o => 
-          o.setName('objetivo')
-            .setDescription('Usuario a limpiar')
-            .setRequired(true)
-        )
+        .addUserOption(o => o.setName('objetivo').setDescription('Usuario a limpiar').setRequired(true))
     ),
 
   async execute(interaction) {
-    // 🛡️ CONTROL DE ACCESO PROPIETARIO
+    // Verificación de credenciales de nivel de sistema (Propietario)
     if (interaction.user.id !== process.env.OWNER_ID) {
       return interaction.reply({ 
         content: '❌ **[N-OS]**: ACCESO_DENEGADO. Protocolo reservado al Operador Raíz.', 
@@ -57,7 +33,7 @@ module.exports = {
     const subcommand = interaction.options.getSubcommand();
 
     // ===========================================================================
-    // SUBCOMANDO: DAR
+    // SUBCOMANDO: TRANSFERENCIA DE SUMINISTROS (DAR)
     // ===========================================================================
     if (subcommand === 'dar') {
       const itemId = interaction.options.getString('id');
@@ -80,33 +56,33 @@ module.exports = {
         });
       }
 
-      // ⚖️ VERIFICACIÓN TÁCTICA DE CARGA
+      // Validación de capacidad de carga en el inventario de destino
       const max = calcularMaxSlots(target.id);
       const actual = calcularSlotsOcupados(target.id);
       const pesoNuevo = Math.ceil(qty / (itemData.stack || 1)) * (itemData.slots || 1);
 
       if (actual + pesoNuevo > max) {
-        // 📟 LOGGER NATIVO (CONSOLA)
-        interaction.client.logger.warn(`[ADMIN_GIVE_FAIL] ${interaction.user.tag} intentó dar ${itemId} x${qty} a ${profile.nombre} pero el inventario está LLENO.`);
+        // Registro en la consola del servidor
+        interaction.client.logger.warn(`[ADMIN_GIVE_FAIL] ${interaction.user.tag} intentó dar ${itemId} x${qty} a ${profile.nombre} pero el inventario excede su capacidad máxima.`);
 
-        // 📂 LOG AZUL (DISCORD)
+        // Registro de auditoría en el canal correspondiente
         await perfilCmd.helpers.sendToLogChannel(interaction, 'ALERTA_CARGA_ADMINISTRATIVA', [
           `**OPERADOR :** <@${interaction.user.id}>`,
           `**SUJETO   :** ${profile.nombre} (<@${target.id}>)`,
-          `**MENSAJE   :** Intento de inyección de \`${itemData.name}\` fallido por sobrecarga de slots.`,
+          `**MENSAJE   :** Intento de inyección de \`${itemData.name}\` fallido por sobrecarga de capacidad.`,
           `**ESTADO    :** Operación abortada automáticamente.`
         ]);
 
         return interaction.reply({ 
-          content: `⚠️ **[N-OS]**: El inventario de **${profile.nombre}** no posee capacidad para esta carga. Aviso registrado en logs.`, 
+          content: `⚠️ **[N-OS]**: El inventario de **${profile.nombre}** carece de capacidad física para esta carga. El aviso ha sido registrado.`, 
           flags: 64 
         });
       }
 
-      // 🛠️ ASEGURAR ESTRUCTURA (MIGRACIÓN DINÁMICA)
+      // Asegurar la consistencia de la estructura de datos (Migración en caliente)
       if (!profile.inventory) profile.inventory = [];
 
-      // 💉 INYECTAR OBJETO CON IDENTIFICADOR ÚNICO
+      // Generación e inserción del nuevo objeto con su identificador único (UUID)
       const nuevoItem = {
         uid: generarItemUUID(),
         itemId: itemId,
@@ -116,10 +92,10 @@ module.exports = {
       profile.inventory.push(nuevoItem);
       updateProfile(target.id, { inventory: profile.inventory });
 
-      // 📟 LOGGER NATIVO
-      interaction.client.logger.info(`[ADMIN_GIVE] ${interaction.user.tag} inyectó ${itemId} x${qty} en la terminal de ${profile.nombre}`);
+      // Registro de transacción exitosa en consola
+      interaction.client.logger.info(`[ADMIN_GIVE] ${interaction.user.tag} inyectó ${itemId} x${qty} en el sistema de ${profile.nombre}`);
 
-      // 📂 LOG AZUL
+      // Registro de transacción exitosa en auditoría
       await perfilCmd.helpers.sendToLogChannel(interaction, 'SUMINISTRO_INYECTADO', [
         `**OPERADOR :** <@${interaction.user.id}>`,
         `**RECEPTOR :** ${profile.nombre} (<@${target.id}>)`,
@@ -134,7 +110,7 @@ module.exports = {
     }
 
     // ===========================================================================
-    // SUBCOMANDO: LIMPIAR
+    // SUBCOMANDO: PURGA DE INVENTARIO (LIMPIAR)
     // ===========================================================================
     if (subcommand === 'limpiar') {
       const target = interaction.options.getUser('objetivo');
@@ -142,29 +118,28 @@ module.exports = {
 
       if (!profile) {
         return interaction.reply({ 
-          content: '❌ **[N-OS]**: Perfil no localizado.', 
+          content: '❌ **[N-OS]**: Perfil no localizado en los registros.', 
           flags: 64 
         });
       }
       
-      // PURGA COMPLETA
+      // Eliminación total de existencias en el inventario y equipo
       updateProfile(target.id, { 
         inventory: [], 
         equipment: {} 
       });
 
-      // 📟 LOGGER NATIVO
-      interaction.client.logger.warn(`[ADMIN_CLEAN] ${interaction.user.tag} purgó remotamente la terminal de ${profile.nombre} (${target.id})`);
+      // Registro de la acción destructiva en consola y auditoría
+      interaction.client.logger.warn(`[ADMIN_CLEAN] ${interaction.user.tag} ejecutó un borrado remoto de los registros de ${profile.nombre} (${target.id})`);
 
-      // 📂 LOG AZUL
       await perfilCmd.helpers.sendToLogChannel(interaction, 'PURGA_SUMINISTROS', [
         `**OPERADOR :** <@${interaction.user.id}>`,
         `**SUJETO   :** ${profile.nombre} (<@${target.id}>)`,
-        `**ACCIÓN   :** Vaciado completo de mochila y equipo táctico.`
+        `**ACCIÓN   :** Vaciado total de contenedores e indumentaria.`
       ]);
 
       return interaction.reply({ 
-        content: `☢️ **[N-OS]**: Se ha ejecutado la purga total de suministros para **${profile.nombre}**.`, 
+        content: `☢️ **[N-OS]**: Operación de limpieza total finalizada con éxito para **${profile.nombre}**.`, 
         flags: 64 
       });
     }

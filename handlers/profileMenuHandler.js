@@ -9,12 +9,12 @@ const perfilCmd = require('../commands/perfil');
 const handleInventory = require('./inventoryHandler');
 
 // ---------------------------------------------------------------------------
-// RACE CONDITIONS
+// Control de concurrencia de eventos
 // ---------------------------------------------------------------------------
 const activeCollectors = new Map();
 
 // ---------------------------------------------------------------------------
-// HELPERS DE URL
+// Funciones auxiliares de extracción de URL
 // ---------------------------------------------------------------------------
 
 function parseEmbedUrl(message) {
@@ -31,7 +31,7 @@ function parseEmbedUrl(message) {
 }
 
 // ---------------------------------------------------------------------------
-// HELPERS DE PERMISOS
+// Funciones auxiliares de validación de permisos
 // ---------------------------------------------------------------------------
 
 function canEdit(userId, member) {
@@ -72,7 +72,7 @@ async function borrarMensajesSeguros(mensajes) {
 }
 
 // ---------------------------------------------------------------------------
-// HANDLER PRINCIPAL
+// Controlador principal de interacciones del perfil
 // ---------------------------------------------------------------------------
 
 module.exports = async function handleProfileButtons(interaction) {
@@ -81,11 +81,11 @@ module.exports = async function handleProfileButtons(interaction) {
   const userId = interaction.user.id;
   const member = interaction.member;
   const client = interaction.client;
-  const customId = interaction.customId; // Ej: perfil_edit_mode
+  const customId = interaction.customId; 
 
   const { ownerId, editorId } = parseEmbedUrl(interaction.message);
   
-  // 🔍 RASTREADOR DE TARGET: Leemos de la URL o del Botón (si venimos del inventario)
+  // Identificación del sujeto objetivo a través de la URL o el identificador del botón
   let targetId = ownerId || userId;
   if (customId.includes('_target_')) {
     targetId = customId.split('_target_')[1].split('_orig_')[0];
@@ -95,10 +95,10 @@ module.exports = async function handleProfileButtons(interaction) {
 
   if (!profile) return interaction.reply({ content: '❌ Perfil no encontrado.', flags: 64 });
 
-  // 🛡️ GATEKEEPER ESTRICTO
+  // Control de acceso y autorización estricta
   let isAuthorized = userId === targetId || userId === editorId;
 
-  // 🟢 EXCEPCIÓN DE RETORNO: Si el inventario borró la URL, pero es el Staff regresando, le damos pase.
+  // Excepción de autorización: Permite el acceso a miembros del personal administrativo (Staff) al regresar del inventario
   if (!isAuthorized && customId.startsWith('perfil_back_target_')) {
     if (perfilCmd.helpers.isStaff(userId, member)) {
       isAuthorized = true; 
@@ -108,7 +108,7 @@ module.exports = async function handleProfileButtons(interaction) {
   if (!isAuthorized) {
     const isStaff = perfilCmd.helpers.isStaff(userId, member);
     
-    // 📢 Log de Auditoría (Embed Azul)
+    // Registro de auditoría del evento
     await perfilCmd.helpers.sendToLogChannel(interaction, 'INTENTO_ACCESO_DENEGADO', [
       `**OPERADOR :** <@${userId}> ${isStaff ? '(⚠️ NIVEL STAFF)' : ''}`,
       `**SUJETO   :** <@${targetId}> — ${profile.nombre}`,
@@ -127,7 +127,7 @@ module.exports = async function handleProfileButtons(interaction) {
   const isSelf = targetId === userId;
 
   // -----------------------------------------------------------------------
-  // ACCIONES INSTANTÁNEAS
+  // Ejecución de interacciones de acceso directo
   // -----------------------------------------------------------------------
 
   if (customId === 'perfil_inv_open') {
@@ -184,7 +184,7 @@ module.exports = async function handleProfileButtons(interaction) {
     return interaction.update({ components: [row1, row2] });
   }
 
-  // 🔥 FIX DE RETORNO: Ahora lee si empieza con 'perfil_back' para aceptar el ID del inventario
+  // Corrección de estado de retorno: Lectura del prefijo para validación del ID de inventario
   if (customId.startsWith('perfil_back')) {
     const mainRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -205,7 +205,7 @@ module.exports = async function handleProfileButtons(interaction) {
         .setStyle(ButtonStyle.Danger)
     );
 
-    // Al restaurar la ficha, volvemos a pasar "userId" como editor para RESTAURAR la URL perdida
+    // Restauración del contexto de la ficha conservando el ID del editor original
     const embed = isSelf
       ? perfilCmd.helpers.generarRespuestaPerfil(profile, targetId)
       : perfilCmd.helpers.generarRespuestaPerfilConEditor(profile, targetId, userId);
@@ -214,7 +214,7 @@ module.exports = async function handleProfileButtons(interaction) {
   }
 
   // -----------------------------------------------------------------------
-  // PROCESAR ENTRADAS DE TEXTO (PDA + AUDITORÍA)
+  // Procesamiento de entradas de texto y registro de auditoría
   // -----------------------------------------------------------------------
 
   const configMap = {
@@ -240,15 +240,14 @@ module.exports = async function handleProfileButtons(interaction) {
     const responseMessage = collected.first();
     const userInput = responseMessage.content.trim();
     
-    // Capturamos el valor antiguo antes de cambiarlo para el log
     const oldValue = profile[action.field] || 'N/A';
     let success = false;
     let logTitle = 'MODIFICACIÓN_FICHA';
 
-    // ── Lógica de borrado ──────────────────────────────────────────────
+    // Rutina de eliminación de entidad
     if (action.field === 'delete') {
       if (userInput.toUpperCase() === 'CONFIRMAR') {
-        // Log de borrado antes de eliminar el objeto
+        // Registro de auditoría previo a la destrucción de los datos
         await perfilCmd.helpers.sendToLogChannel(interaction, 'FICHA_PURGADA', [
           `**OPERADOR :** <@${userId}> ${!isSelf ? '(⚠️ ACCIÓN DE STAFF)' : ''}`,
           `**SUJETO   :** ${profile.nombre} (<@${targetId}>)`,
@@ -264,7 +263,7 @@ module.exports = async function handleProfileButtons(interaction) {
       }
     } 
     
-    // ── Lógica de foto ────────────────────────────────────────────────
+    // Rutina de actualización de registro visual
     else if (action.field === 'foto') {
       const val = validarURLImagen(userInput);
       if (val.valido) {
@@ -275,7 +274,7 @@ module.exports = async function handleProfileButtons(interaction) {
       }
     } 
     
-    // ── Lógica general (Nombre, edad, etc.) ───────────────────────────
+    // Rutinas de actualización de datos biográficos
     else {
       const finalValue = action.field === 'edad' ? parseInt(userInput) : userInput;
       if (action.field === 'edad' && isNaN(finalValue)) {
@@ -286,12 +285,12 @@ module.exports = async function handleProfileButtons(interaction) {
       }
     }
 
-    // 🔥 SINCRONIZACIÓN Y AUDITORÍA EN TIEMPO REAL
+    // Sincronización de estado y auditoría asíncrona
     if (success) {
       const updatedProfile = getProfile(targetId);
       const newValue = updatedProfile[action.field];
 
-      // Enviamos el log detallado al canal azul
+      // Transmisión de auditoría detallada al canal designado
       await perfilCmd.helpers.sendToLogChannel(interaction, 'SINCRONIZACIÓN_DATOS', [
         `**OPERADOR :** <@${userId}> ${!isSelf ? '(⚠️ ACCIÓN DE STAFF)' : ''}`,
         `**SUJETO   :** <@${targetId}> — ${profile.nombre}`,

@@ -48,21 +48,21 @@ function getBackground(categoryId, channelId) {
  * Dibuja una imagen recortada en círculo (Token) con soporte de Aura
  */
 async function drawToken(ctx, imgUrl, x, y, size, borderColor, isActive) {
-  // 🔥 AURA DORADA PARA EL TURNO ACTUAL
+  // Indicador visual de turno activo (Aura dorada)
   if (isActive) {
     ctx.save();
     ctx.beginPath();
     ctx.arc(x + size / 2, y + size / 2, (size / 2) + 8, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 215, 0, 0.4)'; // Brillo dorado
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.4)'; 
     ctx.fill();
     ctx.lineWidth = 4;
-    ctx.strokeStyle = '#ffd700'; // Borde dorado externo
+    ctx.strokeStyle = '#ffd700'; 
     ctx.stroke();
     ctx.restore();
-    borderColor = '#ffd700'; // El borde del token también se vuelve dorado
+    borderColor = '#ffd700'; 
   }
 
-  // Recorte del Token
+  // Máscara de recorte circular para la representación de la entidad
   ctx.save();
   ctx.beginPath();
   ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
@@ -73,14 +73,14 @@ async function drawToken(ctx, imgUrl, x, y, size, borderColor, isActive) {
     const img = await loadImage(imgUrl);
     ctx.drawImage(img, x, y, size, size);
   } catch (e) {
-    // Colores de fallback
+    // Asignación de colores predeterminados en caso de fallo de red o recurso inexistente
     ctx.fillStyle = borderColor === '#3b82f6' ? '#1e3a8a' : (borderColor === '#ffd700' ? '#b8860b' : '#7f1d1d');
     ctx.fillRect(x, y, size, size);
   }
 
   ctx.restore();
 
-  // Borde principal del Token
+  // Renderizado del borde perimetral del token
   ctx.lineWidth = isActive ? 5 : 4;
   ctx.strokeStyle = borderColor;
   ctx.beginPath();
@@ -94,7 +94,7 @@ async function generateCombatImage(combat, channelCategoryId, channelId) {
   const canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
   const ctx = canvas.getContext('2d');
 
-  // 1. Fondo y Sombreado
+  // Fase 1: Renderizado del entorno base y capa de oclusión
   const bgUrl = getBackground(channelCategoryId, channelId);
   try {
     const bg = await loadImage(bgUrl);
@@ -109,17 +109,17 @@ async function generateCombatImage(combat, channelCategoryId, channelId) {
   const tokenSize = 115;
   const gap = 20;
 
-  // Saber de quién es el turno
+  // Identificación de la entidad con el turno táctico activo
   const currentEntity = combat.turnQueue[combat.currentTurn] || {};
 
-  // 2. ENEMIGOS (Franja Superior, en línea recta estática)
+  // Fase 2: Despliegue de entidades hostiles (Disposición superior estática)
   const aliveEnemies = combat.enemies.filter(e => e.hp > 0);
   const totalEnemyWidth = (aliveEnemies.length * tokenSize) + ((aliveEnemies.length - 1) * gap);
   let eStartX = (CANVAS_WIDTH - totalEnemyWidth) / 2; 
   const enemyBaseY = 40;
 
   for (const e of aliveEnemies) {
-    // ¿Es el turno de este monstruo específico?
+    // Verificación de turno para la entidad actual
     const isTurn = currentEntity === e; 
     
     const monsterImg = e.image || 'https://i.pinimg.com/736x/a6/5e/68/a65e6895b802188f28a0876724651edb.jpg';
@@ -127,14 +127,14 @@ async function generateCombatImage(combat, channelCategoryId, channelId) {
     eStartX += tokenSize + gap;
   }
 
-  // 3. JUGADORES (Franja Inferior, en línea recta estática)
+  // Fase 3: Despliegue de operadores aliados (Disposición inferior estática)
   const alivePlayers = combat.players.filter(p => p.hp > 0 && !p.escaped && !p.isDead);
   const totalPlayerWidth = (alivePlayers.length * tokenSize) + ((alivePlayers.length - 1) * gap);
   let pStartX = (CANVAS_WIDTH - totalPlayerWidth) / 2; 
   const playerBaseY = 320; 
 
   for (const p of alivePlayers) {
-    // ¿Es el turno de este jugador específico?
+    // Verificación de turno para el operador actual
     const isTurn = currentEntity.id === p.id;
     
     const profile = getProfile(p.id);

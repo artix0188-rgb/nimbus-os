@@ -1,18 +1,18 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { getProfile, updateProfile } = require('../services/profileService');
 
-// Mapa de intervalos activos: userId → intervalId
-// Se mantiene en memoria; si el bot reinicia, los intervalos se limpian solos
-// (el flag paused en el perfil persiste, pero el recordatorio se reiniciará al primer uso)
+// Mapeo de intervalos de ejecución activos: userId -> intervalId
+// Almacenamiento volátil; los intervalos se restablecen durante el reinicio del sistema
+// La bandera de pausa en el registro persiste, restableciendo el recordatorio en su primera invocación
 const pauseIntervals = new Map();
 
 /**
- * Devuelve true si el userId tiene un rol autorizado para usar /narracion
+ * Valida si el usuario posee los roles necesarios para ejecutar el comando de narración
  */
 function isNarratorAuthorized(member) {
-  // Owner siempre puede
+  // Autorización predeterminada para el operador principal
   if (member.user.id === process.env.OWNER_ID) return true;
-  // Admins siempre pueden
+  // Autorización predeterminada para administradores del sistema
   if (member.permissions.has(PermissionFlagsBits.Administrator)) return true;
 
   const narratorRoles = (process.env.NARRATOR_ROLES || '')
@@ -24,10 +24,10 @@ function isNarratorAuthorized(member) {
 }
 
 /**
- * Activa el recordatorio horario en el canal de logs
+ * Inicializa un temporizador recurrente para notificaciones en el canal de auditoría
  */
 function activarRecordatorio(userId, username, client) {
-  // Limpiar intervalo anterior si existía
+  // Depuración de intervalos preexistentes para prevenir redundancias
   if (pauseIntervals.has(userId)) {
     clearInterval(pauseIntervals.get(userId));
   }
@@ -48,13 +48,13 @@ function activarRecordatorio(userId, username, client) {
     } catch (err) {
       console.error('[N-OS] Error enviando recordatorio de narración:', err);
     }
-  }, 60 * 60 * 1000); // cada hora
+  }, 60 * 60 * 1000); // Intervalo de ejecución: 1 hora
 
   pauseIntervals.set(userId, interval);
 }
 
 /**
- * Desactiva el recordatorio horario
+ * Detiene y elimina el temporizador de notificaciones activo
  */
 function desactivarRecordatorio(userId) {
   if (pauseIntervals.has(userId)) {
@@ -63,7 +63,7 @@ function desactivarRecordatorio(userId) {
   }
 }
 
-// Exportamos el mapa para que index.js pueda limpiar intervalos al cerrar
+// Exposición de la estructura de datos para la rutina de limpieza global
 module.exports = {
   pauseIntervals,
 
@@ -81,7 +81,7 @@ module.exports = {
     const member   = interaction.member;
     const client   = interaction.client;
 
-    // ── Verificar autorización ──────────────────────────────────────────
+    // Fase 1: Validación de autorizaciones del usuario
     if (!isNarratorAuthorized(member)) {
       return interaction.reply({
         content: '🔒 **[N-OS]**: Acceso restringido. No tienes el rol necesario para usar este comando.',
@@ -89,12 +89,12 @@ module.exports = {
       });
     }
 
-    // ── Determinar objetivo ─────────────────────────────────────────────
+    // Fase 2: Identificación del sujeto objetivo
     const targetUser = interaction.options.getUser('usuario') || executor;
     const targetId   = targetUser.id;
     const isSelf     = targetId === executor.id;
 
-    // Si intenta pausar a otro, debe ser admin u owner
+    // Restricción de manipulación de registros de terceros a personal autorizado
     if (!isSelf) {
       const isAdmin = member.permissions.has(PermissionFlagsBits.Administrator);
       const isOwner = executor.id === process.env.OWNER_ID;
@@ -106,7 +106,7 @@ module.exports = {
       }
     }
 
-    // ── Verificar perfil ────────────────────────────────────────────────
+    // Fase 3: Consulta del registro de perfil
     const profile = getProfile(targetId);
     if (!profile) {
       return interaction.reply({
@@ -118,7 +118,7 @@ module.exports = {
     const pausedActual = profile.status?.paused ?? false;
     const nuevoPaused  = !pausedActual;
 
-    // ── Guardar nuevo estado ────────────────────────────────────────────
+    // Fase 4: Persistencia del nuevo estado de pausa
     updateProfile(targetId, {
       status: {
         ...profile.status,
@@ -126,14 +126,14 @@ module.exports = {
       }
     });
 
-    // ── Gestionar recordatorio ──────────────────────────────────────────
+    // Fase 5: Actualización del motor de notificaciones
     if (nuevoPaused) {
       activarRecordatorio(targetId, targetUser.username, client);
     } else {
       desactivarRecordatorio(targetId);
     }
 
-    // ── Log al canal ────────────────────────────────────────────────────
+    // Fase 6: Emisión del registro de auditoría
     const perfilCmd = require('./perfil');
     await perfilCmd.helpers.sendToLogChannel(client, 'MODO_NARRACIÓN', [
       `EVENTO   : ${nuevoPaused ? 'MEDIDORES_PAUSADOS' : 'MEDIDORES_REACTIVADOS'}`,
@@ -141,7 +141,7 @@ module.exports = {
       ...(isSelf ? [] : [`SUJETO   : ${targetUser.tag} (${targetId})`]),
     ]);
 
-    // ── Respuesta efímera al ejecutor ───────────────────────────────────
+    // Fase 7: Transmisión de respuesta final a la interfaz
     const sujetoMention = isSelf ? 'Tus medidores' : `Los medidores de <@${targetId}>`;
 
     if (nuevoPaused) {

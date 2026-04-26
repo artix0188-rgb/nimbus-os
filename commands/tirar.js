@@ -13,7 +13,7 @@ module.exports = {
     .setDescription('Arroja suministros de tu mochila al suelo'),
 
   async execute(interaction) {
-    // 🛡️ RESTRICCIÓN DE CATEGORÍA (RP)
+    // Verificación de zona: Restricción de ejecución a canales de simulación de rol (RP)
     if (interaction.channel.parentId !== process.env.RP_CATEGORY_ID) {
       return interaction.reply({
         content: '❌ **[N-OS]**: Este protocolo solo puede ejecutarse en sectores de la Zona (Canales de RP).',
@@ -34,27 +34,28 @@ module.exports = {
       .setCustomId('floor_drop_select')
       .setPlaceholder('Selecciona qué objeto deseas tirar...');
 
-    const opcionesMap = new Map(); // Usamos un Map para garantizar que no haya UIDs repetidos
+    // Implementación de un mapa de datos para garantizar la unicidad de los identificadores (UIDs)
+    const opcionesMap = new Map(); 
 
     profile.inventory.forEach((item, index) => {
-      // 1. PARCHE DE SEGURIDAD: Si el objeto es viejo y no tiene UID, le inventamos uno rápido
+      // Rutina de compatibilidad: Generación de identificador temporal para suministros heredados sin UID
       if (!item.uid) {
         item.uid = `legacy_${Date.now()}_${index}`;
       }
 
-      // 2. Solo añadimos la opción si el UID no está ya en la lista
+      // Prevención de entradas duplicadas en la lista de opciones
       if (!opcionesMap.has(item.uid)) {
         const data = itemsMaster[item.itemId];
         
         opcionesMap.set(item.uid, {
           label: `${data ? data.name : item.itemId} x${item.cantidad}`,
           description: `UID: ${item.uid.substring(0, 8)}`,
-          value: item.uid // 🔥 ESTO ES LO QUE DISCORD EXIGE QUE SEA ÚNICO
+          value: item.uid // Requiere identificador único estricto para el componente de Discord
         });
       }
     });
 
-    // Convertimos el Map en un array y limitamos a 25 (el máximo que permite Discord en un menú)
+    // Conversión de datos y aplicación de límite estructural de la API (Máximo 25 opciones)
     const opcionesFinales = Array.from(opcionesMap.values()).slice(0, 25);
 
     if (opcionesFinales.length === 0) {
