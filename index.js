@@ -22,7 +22,6 @@ const handleAction = require('./handlers/actionHandler');
 const lootHandler = require('./handlers/lootHandler'); 
 const createLogger = require('./utils/logger');
 const estadosPDA = require('./utils/pdaStatuses');
-const { initWeatherSystem } = require('./services/weatherService');
 
 
 // ==========================================
@@ -90,8 +89,6 @@ client.once('clientReady', async () => {
   }
   client.logger.info('NIMBUS-OS // SYSTEM ONLINE: El sistema está listo para operar.');
 
-  // Inicialización del subsistema meteorológico
-  initWeatherSystem(client);
 
   // Despliegue automático de comandos de aplicación (Slash Commands)
   try {
