@@ -16,11 +16,13 @@ const handleModal = require('./handlers/modalHandler');
 const handleProfileButtons = require('./handlers/profileMenuHandler');
 const handleStatusButtons = require('./handlers/statusMenuHandler');
 const handleHunger = require('./handlers/hungerHandler');
+const handleRadiation = require('./handlers/radiationHandler'); 
 const handleInventory = require('./handlers/inventoryHandler');
 const handleAction = require('./handlers/actionHandler');
 const lootHandler = require('./handlers/lootHandler'); 
 const createLogger = require('./utils/logger');
 const estadosPDA = require('./utils/pdaStatuses');
+const { initWeatherSystem } = require('./services/weatherService');
 
 
 // ==========================================
@@ -88,7 +90,10 @@ client.once('clientReady', async () => {
   }
   client.logger.info('NIMBUS-OS // SYSTEM ONLINE: El sistema está listo para operar.');
 
-  // ── Despliegue automático de comandos de aplicación (Slash Commands) ──
+  // Inicialización del subsistema meteorológico
+  initWeatherSystem(client);
+
+  // Despliegue automático de comandos de aplicación (Slash Commands)
   try {
     const { REST, Routes } = require('discord.js');
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
@@ -106,7 +111,7 @@ client.once('clientReady', async () => {
     console.error('❌ Error al registrar slash commands:', err);
   }
 
-  // SISTEMA DE PRESENCIA ROTATIVA (ALGORITMO SHUFFLE BAG)
+  // Sistema de presencia rotativa (Algoritmo Shuffle Bag)
   let poolEstados = [...estadosPDA];
   let indice = 0;
 
@@ -311,15 +316,16 @@ client.on('interactionCreate', async interaction => {
 }); 
 
 // ==========================================
-// MONITOR DE EVENTOS DE MENSAJERÍA (SISTEMA DE DESGASTE VITAL)
+// MONITOR DE EVENTOS DE MENSAJERÍA (SISTEMA DE DESGASTE VITAL Y AMBIENTAL)
 // ==========================================
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
   try {
     await handleHunger(message, client);
+    await handleRadiation(message, client);
   } catch (err) {
-    console.error('❌ Error en hungerHandler:', err);
+    console.error('❌ Error en manejadores vitales o ambientales:', err);
   }
 });
 
