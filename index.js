@@ -89,7 +89,6 @@ client.once('clientReady', async () => {
   }
   client.logger.info('NIMBUS-OS // SYSTEM ONLINE: El sistema está listo para operar.');
 
-
   // Despliegue automático de comandos de aplicación (Slash Commands)
   try {
     const { REST, Routes } = require('discord.js');
@@ -316,7 +315,8 @@ client.on('interactionCreate', async interaction => {
 // MONITOR DE EVENTOS DE MENSAJERÍA (SISTEMA DE DESGASTE VITAL Y AMBIENTAL)
 // ==========================================
 client.on('messageCreate', async message => {
-  if (message.author.bot) return;
+  // Ignorar bots convencionales, pero permitir el procesamiento de Webhooks (Tupperbox)
+  if (message.author.bot && !message.webhookId) return;
 
   try {
     await handleHunger(message, client);
