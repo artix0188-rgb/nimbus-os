@@ -16,16 +16,29 @@ function getConfig() {
 }
 
 // ===========================================================================
-// Mapeo e indexación de perfiles proxy (Tupperbox/Webhooks)
+// Mapeo e indexación de perfiles proxy (Búsqueda Inteligente y Flexible)
 // ===========================================================================
 function findUserByProxy(webhookUsername) {
   const db = loadDB();
-  const nameLower = webhookUsername.toLowerCase().trim();
+  const rawWebhookName = webhookUsername.trim();
+  const lowerWebhookName = rawWebhookName.toLowerCase();
 
   for (const [userId, profile] of Object.entries(db)) {
     if (!Array.isArray(profile.proxies)) continue;
-    if (profile.proxies.map(p => p.toLowerCase()).includes(nameLower)) {
-      return userId;
+
+    for (const proxy of profile.proxies) {
+      const rawProxy = proxy.trim();
+      const lowerProxy = rawProxy.toLowerCase();
+
+      // Múltiples vectores de detección para mitigar fallos por caracteres especiales Unicode
+      if (
+        rawWebhookName === rawProxy ||             // 1. Coincidencia exacta (Salva fuentes raras)
+        lowerWebhookName === lowerProxy ||         // 2. Coincidencia insensible a mayúsculas
+        rawWebhookName.includes(rawProxy) ||       // 3. Coincidencia parcial estricta
+        lowerWebhookName.includes(lowerProxy)      // 4. Coincidencia parcial insensible
+      ) {
+        return userId;
+      }
     }
   }
   return null;
@@ -63,11 +76,15 @@ function getThresholdAlert(stat, prev, current) {
 module.exports = async function handleHunger(message, client) {
   const config = getConfig();
 
-  if (message.channel?.parentId !== config.categoryId &&
-      message.channel?.id       !== config.categoryId) return;
+  // Validación robusta de sector de Roleplay (Soporte para jerarquía de hilos)
+  const isRPChannel = message.channel?.parentId === config.categoryId || 
+                      message.channel?.id === config.categoryId || 
+                      message.channel?.parent?.parentId === config.categoryId;
 
+  if (!isRPChannel) return;
+
+  // Restricción a mensajes originados exclusivamente por Webhooks (Tupperbox)
   if (!message.webhookId) return;
-  if (message.applicationId) return;
 
   const userId = findUserByProxy(message.author.username);
   if (!userId) return;

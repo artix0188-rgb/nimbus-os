@@ -42,20 +42,25 @@ async function renderUsarMenu(interaction, targetId, origin, notice = '') {
     const d = itemsMaster[i.itemId];
     if (!d) return;
     
-    if (!d.nutricion && !d.hidratacion && !d.heal && d.type !== 'medicina') return;
+    // Filtro corregido: Habilitamos la detección de cura de radiación en el menú
+    if (!d.nutricion && !d.hidratacion && typeof d.heal !== 'number' && !d.radCure && d.type !== 'medicina') return;
 
     const opt = { label: `Usar: ${d.name} (x${i.cantidad})`, value: i.uid };
     let desc = [];
     
     if (d.nutricion > 0) desc.push(`+${d.nutricion} Hambre`);
     if (d.hidratacion > 0) desc.push(`+${d.hidratacion} Sed`);
-    if (d.heal > 0 || d.type === 'medicina') desc.push(`+${d.heal || 30} HP`);
+    
+    // Renderizado preciso del HP basado en el catálogo
+    const hpCura = typeof d.heal === 'number' ? d.heal : (d.type === 'medicina' ? 30 : 0);
+    if (hpCura > 0) desc.push(`+${hpCura} HP`);
+    if (d.radCure > 0) desc.push(`-${d.radCure}% Rad`);
     
     opt.description = desc.join(' | ');
 
     if (d.nutricion > 0) comida.push(opt);
     else if (d.hidratacion > 0) bebida.push(opt);
-    else if (d.heal > 0 || d.type === 'medicina') medicina.push(opt);
+    else if (typeof d.heal === 'number' || d.radCure > 0 || d.type === 'medicina') medicina.push(opt);
   });
 
   const components = [];
@@ -149,7 +154,6 @@ async function renderInventory(interaction, targetId, page = 0, notice = '', isE
     
     let displayName = data.name;
 
-    // Corrección: Se requiere el ID del objeto instanciado en lugar de la base de datos
     if (data.ammoType && MAG_SIZES[item.itemId]) {
       const slotCorto = slot === 'arma_pri' ? 'pri' : 'sec';
       const maxMag = MAG_SIZES[item.itemId];
@@ -334,7 +338,7 @@ module.exports = async function handleInventory(interaction, manualTargetId = nu
   }
 
   // =======================================================================
-  // Consumo y aplicación de objetos
+  // Consumo y aplicación de objetos (CORREGIDO PARA RADAWAY Y HP DINÁMICO)
   // =======================================================================
   if (customId.startsWith('inv_btn_usar_')) {
     if (userId !== targetId) return interaction.reply({ content: '❌ Terminal ajena.', flags: 64 });
@@ -353,26 +357,44 @@ module.exports = async function handleInventory(interaction, manualTargetId = nu
     const item = profile.inventory[itemIdx];
     const data = itemsMaster[item.itemId];
 
-    if (!profile.status) profile.status = { hambre: 100, sed: 100, hp: 100, salud: 100 };
+    if (!profile.status) profile.status = { hambre: 100, sed: 100, hp: 100, radiacion: 0 };
     let replyMsg = [];
 
+    // 1. Nutrición y Sed
     if (data.nutricion) {
       profile.status.hambre = Math.min(100, (profile.status.hambre || 0) + data.nutricion);
-      replyMsg.push(`Hambre: [${profile.status.hambre}%]`);
+      replyMsg.push(`Hambre: [${Math.floor(profile.status.hambre)}%]`);
     }
     if (data.hidratacion) {
       profile.status.sed = Math.min(100, (profile.status.sed || 0) + data.hidratacion);
-      replyMsg.push(`Sed: [${profile.status.sed}%]`);
+      replyMsg.push(`Sed: [${Math.floor(profile.status.sed)}%]`);
     }
     
-    let curacion = 0;
-    if (data.heal) curacion = data.heal;
-    else if (data.type === 'medicina') curacion = 30;
+    // 2. Lógica Médica Corregida: Radiación antes de Salud
+    const radCure = data.radCure || 0;
+    if (radCure > 0) {
+      profile.status.radiacion = Math.max(0, (profile.status.radiacion || 0) - radCure);
+      replyMsg.push(`Rad: -${radCure}%`);
+    }
 
-    if (curacion > 0) {
-      profile.status.hp = Math.min(100, (profile.status.hp || 0) + curacion);
-      profile.status.salud = profile.status.hp; 
-      replyMsg.push(`Salud/HP: [${profile.status.hp}%]`);
+    // 3. Curación de HP respetando el tope dinámico (MaxHP - Rad)
+    const hpCurado = typeof data.heal === 'number' ? data.heal : (data.type === 'medicina' ? 30 : 0);
+
+    if (hpCurado > 0) {
+      const topeVidaReal = Math.max(1, (profile.status.maxHp || 100) - (profile.status.radiacion || 0));
+      profile.status.hp = Math.min((profile.status.hp || 0) + hpCurado, topeVidaReal);
+      replyMsg.push(`HP: [${Math.floor(profile.status.hp)}%]`);
+    }
+
+    // 4. Limpieza de estados alterados
+    if (data.cures && Array.isArray(data.cures)) {
+      if (!profile.status.estados) profile.status.estados = {};
+      data.cures.forEach(c => {
+        if (profile.status.estados[c]) {
+          profile.status.estados[c] = false;
+          replyMsg.push(`Curado: ${c.toUpperCase()}`);
+        }
+      });
     }
 
     item.cantidad -= 1;
@@ -384,12 +406,12 @@ module.exports = async function handleInventory(interaction, manualTargetId = nu
     let emoji = "🎒";
     if (data.hidratacion && !data.nutricion) { accionVerbo = "bebe un poco de"; emoji = "💧"; }
     else if (data.nutricion) { accionVerbo = "consume"; emoji = "🍖"; }
-    else if (data.heal || data.type === 'medicina') { accionVerbo = "se aplica"; emoji = "💉"; }
+    else if (hpCurado > 0 || radCure > 0 || data.type === 'medicina') { accionVerbo = "se aplica"; emoji = "💉"; }
 
     await renderUsarMenu(interaction, targetId, origin);
     await interaction.channel.send({ content: `${emoji} **${profile.nombre}** ${accionVerbo} **${data.name}**.` });
 
-    return interaction.followUp({ content: `✅ **[${data.name}] consumido** -> ${replyMsg.join(' | ')}`, flags: 64 });
+    return interaction.followUp({ content: `✅ **Lectura PDA**:  ${replyMsg.join(' | ')}`, flags: 64 });
   }
 
   // =======================================================================

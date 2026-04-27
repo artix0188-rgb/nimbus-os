@@ -15,7 +15,8 @@ const DEFAULT_PROFILE = {
   },
   inventory: [],
   equipment: {},
-  mags: {} 
+  mags: {},
+  proxies: [] // Añadido contenedor base para mapeo de Tupperbox
 };
 
 // ============================================================================
@@ -112,7 +113,7 @@ function createProfile(userId, data) {
     bio: (data.bio || DEFAULT_PROFILE.bio).substring(0, 60),
     foto: data.foto || DEFAULT_PROFILE.foto,
     status: data.status || { ...DEFAULT_PROFILE.status },
-    inventory: [], equipment: {}, mags: {},
+    inventory: [], equipment: {}, mags: {}, proxies: [],
     createdAt: Date.now(), updatedAt: Date.now()
   };
 
@@ -158,6 +159,9 @@ function updateProfile(userId, newData) {
   if (newData.inventory !== undefined && Array.isArray(newData.inventory)) sanitizedUpdates.inventory = newData.inventory;
   if (newData.equipment !== undefined && typeof newData.equipment === 'object') sanitizedUpdates.equipment = newData.equipment;
   if (newData.mags !== undefined && typeof newData.mags === 'object') sanitizedUpdates.mags = newData.mags;
+  
+  // AÑADIDO: Autorización para guardar y modificar la matriz de proxies en disco
+  if (newData.proxies !== undefined && Array.isArray(newData.proxies)) sanitizedUpdates.proxies = newData.proxies;
 
   sanitizedUpdates.updatedAt = Date.now();
   database[userId] = { ...database[userId], ...sanitizedUpdates };

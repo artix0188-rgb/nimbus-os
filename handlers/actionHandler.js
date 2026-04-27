@@ -238,14 +238,7 @@ module.exports = async function handleAction(interaction) {
     const newStatus = { ...profile.status };
     const newEstados = { ...newStatus.estados };
 
-    // Recuperación de integridad física (HP)
-    if (hpCurado > 0) {
-      const topeVidaReal = Math.max(1, (newStatus.maxHp || 100) - (newStatus.radiacion || 0));
-      newStatus.hp = Math.min(newStatus.hp + hpCurado, topeVidaReal);
-      detailMsg.push(`+${hpCurado} HP`);
-    }
-
-    // Estabilización de anomalías biológicas
+    // PASO 1: Estabilización de anomalías biológicas
     if (curaSangrado && newEstados.sangrado) {
       newEstados.sangrado = false;
       detailMsg.push(`Hemorragia detenida`);
@@ -255,15 +248,26 @@ module.exports = async function handleAction(interaction) {
       detailMsg.push(`Fallo por toxicidad mitigado`);
     }
 
-    // Procesamiento de contaminación por radiación
+    // PASO 2: Procesamiento de contaminación por radiación (Antes de curar HP)
     if (radiacionCurada > 0) {
       newStatus.radiacion = Math.max(0, (newStatus.radiacion || 0) - radiacionCurada);
       detailMsg.push(`-${radiacionCurada}% Radiación`);
     }
+    
     if (radiacionAumentada > 0) {
       newStatus.radiacion = Math.min(100, (newStatus.radiacion || 0) + radiacionAumentada);
       detailMsg.push(`⚠️ +${radiacionAumentada}% Radiación`);
-      // Ajuste del límite vital basado en la degradación por radiación
+    }
+
+    // PASO 3: Recuperación de integridad física (HP) con los nuevos límites
+    if (hpCurado > 0) {
+      const topeVidaReal = Math.max(1, (newStatus.maxHp || 100) - (newStatus.radiacion || 0));
+      newStatus.hp = Math.min((newStatus.hp || 0) + hpCurado, topeVidaReal);
+      detailMsg.push(`+${hpCurado} HP`);
+    }
+
+    // PASO 4: Ajuste forzoso si la radiación recibida redujo el límite por debajo de la vida actual
+    if (radiacionAumentada > 0) {
       const topeVidaReal = Math.max(1, (newStatus.maxHp || 100) - newStatus.radiacion);
       if (newStatus.hp > topeVidaReal) newStatus.hp = topeVidaReal;
     }
